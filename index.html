@@ -14,15 +14,36 @@
 <script src="js/intro.js?v=botanical1"></script>
 <script src="assets/vendor/gsap.min.js?v=3.12.5" defer></script>
 <script>document.documentElement.classList.add("m-enter");</script>
+<script>document.documentElement.classList.add("mosaic-loading");</script>
+<link rel="stylesheet" href="css/loader.css?v=loader1">
+<script src="js/loader.js?v=loader1" defer></script>
 <script>document.documentElement.classList.add('mo-js');setTimeout(()=>document.documentElement.classList.add('mo-safe'),2500)</script>
 <link rel="modulepreload" href="assets/moments/moments.js"><link rel="modulepreload" href="assets/moments/lib.js"><link rel="modulepreload" href="assets/moments/word-highlight/moment.js">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23315b43' d='M4 4h11v11H4zm13 13h11v11H17z'/%3E%3Cpath fill='%23c22d63' d='M17 4h11v11H17z'/%3E%3C/svg%3E">
 <link rel="preload" as="font" href="assets/fonts/Milesdane%20Trial.otf" type="font/otf" crossorigin>
+<link rel="preload" as="font" href="assets/fonts/NeueMontreal-Regular.otf" type="font/otf" crossorigin>
 <link rel="stylesheet" href="assets/motion/motion.css?v=mosaic1">
-<link rel="stylesheet" href="css/tokens.css?v=mosaic1"><link rel="stylesheet" href="css/base.css?v=mosaic1"><link rel="stylesheet" href="css/layout.css?v=mosaic1"><link rel="stylesheet" href="css/components.css?v=mosaic1"><link rel="stylesheet" href="css/screens.css?v=mosaic1"><link rel="stylesheet" href="css/welcome.css?v=mosaic1"><link rel="stylesheet" href="css/studio.css?v=mosaic1">
+<link rel="stylesheet" href="css/tokens.css?v=mosaic1"><link rel="stylesheet" href="css/base.css?v=mosaic1"><link rel="stylesheet" href="css/layout.css?v=mosaic1"><link rel="stylesheet" href="css/components.css?v=mosaic1"><link rel="stylesheet" href="css/screens.css?v=mosaic1"><link rel="stylesheet" href="css/welcome.css?v=mosaic1"><link rel="stylesheet" href="css/studio.css?v=montreal1">
+<link rel="stylesheet" href="css/live.css?v=mosaic1">
+<link rel="stylesheet" href="css/readability.css?v=readable1">
 <link rel="stylesheet" href="css/intro.css?v=botanical1">
 </head>
 <body>
+<div class="mosaic-loader" id="mosaic-loader" aria-hidden="true" inert>
+  <div class="loader-composition">
+    <span class="loader-grid">
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+    </span>
+    <span class="loader-wordmark">Personal OS</span>
+  </div>
+</div>
 <!-- Client-directed botanical pixel identity. Milesdane Trial + DM Mono; original geometric artwork. -->
 <a class="skip-link" href="#welcome-main">Skip to content</a>
 <!-- Bang Motion: Progress takes shape · one continuous shot · task → fragments → botanical mosaic → live hero. -->
@@ -151,7 +172,7 @@
 <script src="js/data.js?v=mosaic1"></script>
 <script src="js/store.js?v=mosaic1"></script>
 <script src="js/firebase-config.js?v=mosaic1"></script>
-<script src="js/cloud.js?v=mosaic1"></script>
+<script src="js/cloud.js?v=firestore-setup1"></script>
 <script src="js/welcome.js?v=mosaic1"></script>
 <script src="js/planning.js?v=mosaic1"></script>
 <script src="js/mosaic.js?v=mosaic1"></script>
@@ -159,6 +180,8 @@
 <script src="js/goal-agent.js?v=deepseek1"></script>
 <script src="js/deepseek.js?v=mosaic1"></script>
 <script src="js/components.js?v=mosaic1"></script>
+<script src="js/live-core.js?v=mosaic1"></script>
+<script src="js/live.js?v=mosaic1"></script>
 <script src="js/onboarding.js?v=mosaic1"></script>
 <script src="js/views/today.js?v=mosaic1"></script>
 <script src="js/views/brain-dump.js?v=mosaic1"></script>
@@ -173,8 +196,10 @@
 <script src="js/views/notes.js?v=mosaic1"></script>
 <script src="js/views/habits.js?v=mosaic1"></script>
 <script src="js/views/reflection.js?v=mosaic1"></script>
-<script src="js/views/settings.js?v=mosaic1"></script>
+<script src="js/views/settings.js?v=firestore-setup1"></script>
 <script src="js/views/mosaic.js?v=mosaic1"></script>
+<script src="js/project-conversation.js?v=voice1"></script>
+<script src="js/plan-editor.js?v=voice1"></script>
 <script src="js/app.js?v=mosaic1"></script>
 <script type="module" src="assets/moments/moments.js"></script>
 <script type="module" src="assets/motion/motion.js"></script>

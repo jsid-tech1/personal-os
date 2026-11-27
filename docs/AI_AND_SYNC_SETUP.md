@@ -1,5 +1,13 @@
 # AI planning and automatic cloud sync
 
+## Project conversation and voice
+
+In Add task, expand **Talk through your project**. Send typed messages or use **Start microphone** to dictate, review the transcript, then send it. The AI asks contextual follow-ups and maintains a running editable brief. **Use this brief for my plan** copies it into the planning form; generation, review and explicit approval still happen separately. No conversation message creates tasks by itself.
+
+Conversation uses the same authenticated `/api/plan` endpoint with `mode: conversation` and the existing server-only OpenAI configuration. It is bounded to eight exchanges and ten total API requests/user/minute per warm instance. The transcript is ephemeral, cleared on closing the planner, and not written to the account database. Only messages explicitly sent go to OpenAI. Browser dictation may use the browser vendor's remote speech service. Supported browsers require microphone permission and HTTPS or localhost; unsupported/denied/error cases retain typing. **Read reply aloud** and **Stop reading** provide optional browser speech playback. Closing the planner or signing out stops capture/playback and aborts pending requests. Automated voice tests simulate recognition; real microphone accuracy is device/browser-dependent.
+
+Latest typography uses Neue Montreal for interface copy and numeric information, retaining MilesDane display headings. The supplied Neue Montreal demo archive contains no license document; verify the appropriate license before publication.
+
 ## What works without new credentials
 
 The existing Firebase Google sign-in remains real. Account-local task plans, calendar, completion, weekly artwork archives, focus sessions, preferences, import/export and logout run immediately. Manual planning is explicitly labelled manual, never presented as AI. No new account has fabricated progress.
@@ -37,7 +45,7 @@ npx firebase-tools functions:secrets:set DEEPSEEK_API_KEY --project personal-os-
 npm run deploy
 ```
 
-The function `plan` deploys to `us-central1`; Hosting rewrites `/api/plan` to it. Runtime identity uses Firebase-managed credentials. The API rejects unapproved browser origins, checks Firebase ID tokens, bounds input/output, has a 45-second model timeout, limits each warm instance to five requests/user/minute and caps deployment at three instances. For broader public use, add App Check, a distributed quota/budget control and monitoring; the warm-instance limiter alone is not a global abuse-protection service.
+The function `plan` deploys to `us-central1`; Hosting rewrites `/api/plan` to it. Runtime identity uses Firebase-managed credentials. The API rejects unapproved browser origins, checks Firebase ID tokens, bounds input/output, has a 45-second model timeout, limits each warm instance to ten requests/user/minute and caps deployment at three instances. For broader public use, add App Check, a distributed quota/budget control and monitoring; the warm-instance limiter alone is not a global abuse-protection service.
 
 ## Automatic sync and rules
 
@@ -49,4 +57,4 @@ Manual backups remain a separate recovery snapshot at `users/{uid}/backups/works
 
 ## Font and artwork
 
-The supplied `Milesdane Trial.otf` license permits personal use only, not commercial or large-audience use. Obtain the appropriate license before publication. `assets/fonts/Read Me.txt` contains the original terms. DM Mono is retained from the existing project. The supplied posters are references only, not bundled assets; mosaic artwork is original deterministic HTML geometry.
+The supplied `Milesdane Trial.otf` license permits personal use only, not commercial or large-audience use. Obtain the appropriate license before publication. `assets/fonts/Read Me.txt` contains the original terms. Neue Montreal replaces DM Mono in the current interface; confirm the demo font's licensing separately. The supplied posters are references only, not bundled assets; mosaic artwork is original deterministic HTML geometry.

@@ -42,7 +42,7 @@ const modules = {
     export const doc = (db, ...parts) => parts.join('/');
     export const serverTimestamp = () => 'SERVER_TIMESTAMP';
     export async function setDoc(ref, data) {
-      if (window.mock.dbError) throw { code: window.mock.dbError };
+      if (window.mock.dbError) throw { code: window.mock.dbError, message: window.mock.dbErrorMessage || '' };
       if (ref.includes('/backups/')) window.mock.writes.push({ ref, data });
       else (window.mock.syncWrites ||= []).push({ ref, data });
       window.mock.docs[ref] = structuredClone(data);
@@ -54,7 +54,7 @@ const modules = {
       return result;
     }
     export async function getDoc(ref) {
-      if (window.mock.dbError) throw { code: window.mock.dbError };
+      if (window.mock.dbError) throw { code: window.mock.dbError, message: window.mock.dbErrorMessage || '' };
       const data = window.mock.docs[ref];
       return { exists: () => !!data, data: () => structuredClone(data) };
     }`,
@@ -321,6 +321,30 @@ test("auth and permission errors are actionable; offline work continues", async 
   });
   assert.match(error, /offline/);
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem(POS.store.storageKey())).tasks.some(t => t.title === "Offline edit")), true);
+});
+
+test("disabled Firestore API shows setup actions, preserves local data and can retry after setup", async t => {
+  const { page } = await open(t, { viewport: { width: 390, height: 844 } });
+  await signIn(page);
+  await page.evaluate(() => {
+    POS.store.actions.addTask({ title: "Do not lose my work" });
+    mock.dbError = "permission-denied";
+    mock.dbErrorMessage = "Request failed with error: Cloud Firestore API has not been used in project personal-os-12b89 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/firestore.googleapis.com/overview?project=personal-os-12b89 then retry.";
+  });
+  const before = await page.evaluate(() => JSON.stringify(POS.store.get()));
+  await page.locator("#s-cloud-save").click();
+  await page.locator(".cloud-setup-help").waitFor();
+  assert.match(await page.locator("#s-cloud [role=alert]").innerText(), /Firestore API is disabled/);
+  assert.doesNotMatch(await page.locator("#s-cloud [role=alert]").innerText(), /https?:/);
+  assert.match(await page.getByRole("link", { name: /Enable Firestore API/ }).getAttribute("href"), /project=personal-os-12b89/);
+  assert.equal(await page.evaluate(() => JSON.stringify(POS.store.get())), before);
+  assert.equal(await page.locator("#app").isVisible(), true);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  await page.evaluate(() => { mock.dbError = null; mock.dbErrorMessage = ""; });
+  await page.locator("#s-cloud-save").click();
+  await page.waitForFunction(() => !!POS.cloud.getStatus().lastSaved);
+  assert.equal(await page.locator(".cloud-setup-help").count(), 0);
+  assert.equal(await page.evaluate(() => POS.store.get().tasks[0].title), "Do not lose my work");
 });
 
 test("SDK loading failure keeps workspace locked and retry can initialize Firebase", async t => {
@@ -778,4 +802,120 @@ test("a second device restores the automatically saved private workspace on sign
   assert.equal(await second.page.evaluate(() => POS.sync.status().ready), true);
   await second.page.evaluate(() => mock.changeAccount("bob"));
   assert.equal(await second.page.evaluate(() => POS.store.get().tasks.length), 0);
+});
+
+test("spoken project conversation retains context and creates a brief without saving tasks", async t => {
+  const { page } = await open(t, { viewport: { width: 390, height: 844 } });
+  await signIn(page);
+  await page.evaluate(() => {
+    window.SpeechRecognition = class {
+      start() { window.voiceMock = this; this.onstart(); }
+      stop() { this.onend?.(); }
+      abort() { window.voiceAborted = true; this.onend?.(); }
+    };
+  });
+  const requests = [];
+  await page.route("**/api/plan", async route => {
+    const body = route.request().postDataJSON(); requests.push(body);
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify({ reply: requests.length === 1 ? "What needs to be ready for the submission?" : "We can plan research, sketches and a presentation.", brief: "Typography project: research, sketches and a presentation. Deadline: 10 December 2026.", ready: requests.length > 1 }) });
+  });
+  await page.locator("#capture-btn").click();
+  await page.locator("#project-conversation summary").click();
+  await page.locator("#conversation-mic").click();
+  await page.evaluate(() => { voiceMock.onresult({ results: [[{ transcript: "I am making a typography project" }]] }); voiceMock.onend(); });
+  assert.equal(await page.locator("#conversation-input").inputValue(), "I am making a typography project");
+  assert.equal(requests.length, 0, "dictation is not sent without explicit approval");
+  await page.locator("#conversation-send").click();
+  await page.locator(".conversation-bubble.assistant").filter({ hasText: "What needs" }).waitFor();
+  await page.locator("#conversation-input").fill("Research, sketches and a presentation, due on 10 December");
+  await page.locator("#conversation-send").click();
+  await page.locator(".conversation-bubble.assistant").filter({ hasText: "We can plan" }).waitFor();
+  assert.equal(requests[1].messages.length, 3);
+  assert.equal(requests[1].messages[1].role, "assistant");
+  await page.locator("#conversation-use").click();
+  assert.match(await page.locator("#plan-description").inputValue(), /Typography project/);
+  assert.equal(await page.locator("#plan-deadline").inputValue(), "2026-12-10");
+  assert.equal(await page.evaluate(() => POS.store.get().tasks.length), 0);
+  await page.getByRole("button", { name: "Close task planner" }).click();
+  assert.equal(await page.evaluate(() => voiceAborted), true);
+});
+
+test("voice permission failure and unavailable recognition keep typing usable", async t => {
+  const { page } = await open(t);
+  await signIn(page);
+  await page.evaluate(() => { window.SpeechRecognition = class { start() { this.onerror({ error: "not-allowed" }); this.onend(); } abort() {} }; });
+  await page.locator("#capture-btn").click();
+  await page.locator("#project-conversation summary").click();
+  await page.locator("#conversation-mic").click();
+  assert.match(await page.locator("#conversation-status").innerText(), /permission was denied/);
+  assert.equal(await page.locator("#conversation-send").isEnabled(), true);
+  await page.getByRole("button", { name: "Close task planner" }).click();
+  await page.evaluate(() => { window.SpeechRecognition = undefined; window.webkitSpeechRecognition = undefined; });
+  await page.locator("#capture-btn").click();
+  await page.locator("#project-conversation summary").click();
+  assert.equal(await page.locator("#conversation-mic").isVisible(), false);
+  await page.locator("#conversation-input").fill("I can still describe my project");
+  assert.match(await page.locator("#conversation-voice-help").innerText(), /unavailable/);
+});
+
+test("readable typography is maintained across landing, tasks and conversation on desktop and phone", async t => {
+  const { page } = await open(t);
+  const size = selector => page.locator(selector).first().evaluate(el => parseFloat(getComputedStyle(el).fontSize));
+  assert.ok(await size("body") >= 16);
+  assert.ok(await size(".landing-description") >= 18);
+  assert.ok(await size(".welcome-account-help") >= 14);
+  await signIn(page);
+  await page.evaluate(() => { POS.store.actions.addTask({ title: "A clearly readable task" }); location.hash = "#/today"; });
+  await page.locator(".task-copy strong").waitFor();
+  for (const width of [1440, 768, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert.ok(await size(".task-copy strong") >= 16, `${width}px task title`);
+    assert.ok(await size(".task-copy p") >= 14, `${width}px task details`);
+    assert.ok(await size(".studio-page-head p") >= 14, `${width}px date label`);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${width}px dashboard fits`);
+  }
+  await page.locator("#capture-btn").click();
+  await page.locator("#project-conversation summary").click();
+  assert.ok(await size(".conversation-bubble") >= 16);
+  assert.ok(await size("#conversation-input") >= 16);
+  assert.ok(await size(".field-help") >= 14);
+  assert.equal(await page.locator(".plan-overlay").evaluate(el => el.scrollWidth > el.clientWidth), false);
+  await page.screenshot({ path: "test-results/readable-conversation-320.png" });
+});
+
+test("mosaic reveals expire, never intercept controls and do not replay on task updates", async t => {
+  const { page } = await open(t, { reducedMotion: "no-preference" });
+  await page.waitForFunction(() => !document.getElementById("mosaic-loader"));
+  assert.equal(await page.locator("html").evaluate(el => el.classList.contains("mosaic-loading")), false);
+  await signIn(page);
+  await page.evaluate(() => { POS.store.actions.addTask({ title: "Click through the mosaic" }); location.hash = "#/today"; });
+  await page.locator(".task-copy strong").waitFor();
+  const reveal = await page.evaluate(() => {
+    const main = document.getElementById("main");
+    POS.loader.reveal(main);
+    const button = main.querySelector("[data-plan]"), rect = button.getBoundingClientRect();
+    return { tiles: main.querySelectorAll(".route-mosaic .loader-grid i").length, pointer: getComputedStyle(main.querySelector(".route-mosaic")).pointerEvents, receivesClick: button.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)) };
+  });
+  assert.equal(reveal.tiles, 64);
+  assert.equal(reveal.pointer, "none");
+  assert.equal(reveal.receivesClick, true);
+  await page.waitForFunction(() => !document.querySelector(".route-mosaic"));
+  await page.getByRole("checkbox", { name: "Complete Click through the mosaic", exact: true }).click();
+  assert.equal(await page.locator(".route-mosaic").count(), 0);
+  await page.reload();
+  await page.waitForFunction(() => !document.getElementById("mosaic-loader"));
+  assert.equal(await page.locator(".studio-dashboard-grid").isVisible(), true);
+});
+
+test("reduced motion skips mosaic screen reveals and missing loader code cannot trap the page", async t => {
+  const { page, context } = await open(t);
+  await signIn(page);
+  await page.evaluate(() => POS.loader.reveal(document.getElementById("main")));
+  assert.equal(await page.locator(".route-mosaic").count(), 0);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await context.route("**/js/loader.js?*", route => route.abort());
+  await page.reload();
+  await page.waitForFunction(() => getComputedStyle(document.getElementById("mosaic-loader")).visibility === "hidden");
+  assert.equal(await page.locator("#mosaic-loader").isVisible(), false);
+  assert.equal(await page.locator("#app").isVisible(), true);
 });

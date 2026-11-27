@@ -6,7 +6,9 @@
   let state = { text: "Saved on this device", error: "", ready: false };
   function publish(patch) {
     state = { ...state, ...patch };
-    document.querySelectorAll("[data-sync-status]").forEach(el => { el.textContent = state.error || state.text; });
+    document.querySelectorAll("[data-sync-status]").forEach(el => {
+      el.textContent = el.classList.contains("sidebar-sync") && state.error ? "Cloud unavailable · saved locally" : state.error || state.text;
+    });
     window.dispatchEvent(new Event("pos:sync"));
   }
   function remember() { try { localStorage.setItem("personal-os:sync:" + uid, JSON.stringify({ revision, dirty })); } catch { /* Store handles quota recovery. */ } }

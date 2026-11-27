@@ -162,6 +162,7 @@
 
     if (changedPath) window.scrollTo(0, 0);
     else window.scrollTo(0, y);
+    if (changedPath && lastPath !== null) POS.loader?.reveal(main);
 
     lastPath = meta.path;
     pendingRerender = false;
@@ -255,13 +256,16 @@
     if (foot) {
       foot.innerHTML = `
         <button class="sidebar-assistant" id="sidebar-assistant">
-          ${icon("plus")}<span class="grow">Plan something new</span>
+          ${icon("sparkles")}<span class="grow">Ask</span><span class="mono">LIVE</span>
         </button>
         <div class="status-line ${navigator.onLine ? "" : "is-offline"}">
           <span class="dot"></span>
           <span id="local-save-status">${store.persistenceError() ? "Changes not saved" : navigator.onLine ? "Saved on this device" : "Offline · still saved"}</span>
         </div>`;
-      foot.querySelector("#sidebar-assistant").addEventListener("click", () => ui.openAssistant());
+      foot.querySelector("#sidebar-assistant").addEventListener("click", () => {
+        if (POS.live) POS.live.open();
+        else ui.openAssistant();
+      });
     }
 
     const crumb = document.getElementById("crumb");

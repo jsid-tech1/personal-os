@@ -36,6 +36,12 @@ spacing:
 
 ## Current identity — mosaic planning rebuild
 
+**Mosaic entrance:** an original finite 8×8 fragment assembly appears on opening/refresh, inspired by the requested sanvithi.com loading reference but not using its source code, branding or assets. Route changes get a 260ms paint-only reveal; state updates never replay it. Both layers ignore pointer input, contain no focusable controls and are skipped under reduced motion. The entrance ends independently of Firebase/network readiness, with a CSS timeout fallback if loader JavaScript fails. It is a brand entrance, not fabricated percentage progress.
+
+**Readability scale:** interface/body text is 16px, landing descriptions 18px, task titles 17px, secondary copy and labels 14px, and actions 15–16px. `css/readability.css` is the final shared type layer; phone layouts reflow rather than shrinking body text. Secondary ink contrast is strengthened in both themes. Date ranges and other numeric interface headings use Neue Montreal to avoid restricted MilesDane trial numeral glyphs.
+
+**Latest typography update:** Neue Montreal now replaces monospace across body copy, navigation, forms, conversation, labels, dates and timers. MilesDane remains the heading/display face. Regular, Medium, Bold and Italic are self-hosted from the supplied demo archive; that archive contains no accompanying license text, so confirm the applicable Pangram Pangram licensing before public/commercial release. Historical DM Mono notes below describe the earlier iteration. The legacy `--font-mono` token intentionally aliases Neue Montreal so older components also use the requested typeface.
+
 The current app layers `css/studio.css` over the historical system below. See [docs/mosaic-product-plan.md](docs/mosaic-product-plan.md): MilesDane display headings, DM Mono interface/numerals, pale botanical paper, forest actions and raspberry/petal/chartreuse mosaic fragments. Real task completion earns the artwork. Light/dark themes and reduced motion are supported. The supplied Milesdane Trial is personal-use-only; obtain the appropriate license before public commercial release. Earlier Instrument Serif/Geist guidance below records the preceding design, not the current typography.
 
 **Mode:** Operate. This is a tool used daily, before coffee and after dinner. Scanability,

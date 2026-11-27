@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Personal OS — A task planner for creative minds</title>
+  <meta name="description" content="Personal OS turns a messy brain dump into a plan that fits real days. Approve every task before it is saved, and reveal a weekly botanical pixel mosaic as you finish work.">
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('personal-os-theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var theme = saved === 'dark' || saved === 'light' ? saved : (prefersDark ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.classList.add('js-enabled');
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="#top" aria-label="Personal OS home">
+        <svg class="brand-mark" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <rect x="8" y="2" width="4" height="4" fill="#c22d63"/>
+          <rect x="4" y="6" width="4" height="4" fill="#315b43"/>
+          <rect x="8" y="6" width="4" height="4" fill="#b2c435"/>
+          <rect x="12" y="6" width="4" height="4" fill="#315b43"/>
+          <rect x="8" y="10" width="4" height="4" fill="#315b43"/>
+          <rect x="4" y="14" width="4" height="4" fill="#5d876d"/>
+          <rect x="8" y="14" width="4" height="4" fill="#315b43"/>
+        </svg>
+        <span class="brand-name">Personal OS</span>
+      </a>
+
+      <nav class="site-nav" aria-label="Primary">
+        <a href="#how-it-works">How it works</a>
+        <a href="#the-mosaic">The mosaic</a>
+      </nav>
+
+      <div class="header-actions">
+        <button type="button" class="icon-btn" id="theme-toggle" aria-label="Switch to dark mode" aria-pressed="false">
+          <svg class="icon-theme-sun" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <rect x="6" y="6" width="4" height="4" fill="currentColor"/>
+            <rect x="7" y="1" width="2" height="3" fill="currentColor"/>
+            <rect x="7" y="12" width="2" height="3" fill="currentColor"/>
+            <rect x="1" y="7" width="3" height="2" fill="currentColor"/>
+            <rect x="12" y="7" width="3" height="2" fill="currentColor"/>
+            <rect x="3" y="3" width="2" height="2" fill="currentColor"/>
+            <rect x="11" y="3" width="2" height="2" fill="currentColor"/>
+            <rect x="3" y="11" width="2" height="2" fill="currentColor"/>
+            <rect x="11" y="11" width="2" height="2" fill="currentColor"/>
+          </svg>
+          <svg class="icon-theme-moon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <rect x="5" y="2" width="5" height="2" fill="currentColor"/>
+            <rect x="3" y="4" width="4" height="2" fill="currentColor"/>
+            <rect x="2" y="6" width="3" height="4" fill="currentColor"/>
+            <rect x="3" y="10" width="4" height="2" fill="currentColor"/>
+            <rect x="5" y="12" width="7" height="2" fill="currentColor"/>
+            <rect x="10" y="10" width="3" height="2" fill="currentColor"/>
+          </svg>
+        </button>
+        <a class="btn btn-primary btn-sm" href="/auth/google" data-auth-action="google" aria-label="Get started by continuing with Google">Get started</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top" data-reveal>
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">A task planner for creative minds.</p>
+          <h1 class="hero-title">
+            <span class="hero-line">A task planner.</span>
+            <span class="hero-line">A little space</span>
+            <span class="hero-line">to create.</span>
+          </h1>
+          <p class="hero-desc">Describe a project in plain paragraphs, refine the proposed tasks and schedule, and watch every finished item reveal a tile in a weekly botanical mosaic.</p>
+
+          <div class="hero-cta-group">
+            <a class="btn btn-primary btn-google" href="/auth/google" data-auth-action="google">
+              <svg class="google-mark" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M14.4 8.18c0-.48-.04-.94-.12-1.38H8v2.62h3.59a3.07 3.07 0 0 1-1.33 2.01v1.67h2.15c1.26-1.16 1.99-2.87 1.99-4.92Z" fill="currentColor"/>
+                <path d="M8 14.67c1.8 0 3.31-.6 4.41-1.61l-2.15-1.67c-.6.4-1.36.64-2.26.64-1.74 0-3.21-1.17-3.74-2.75H2.04v1.72A6.66 6.66 0 0 0 8 14.67Z" fill="currentColor" fill-opacity="0.85"/>
+                <path d="M4.26 9.28A4.01 4.01 0 0 1 4.05 8c0-.44.08-.87.21-1.28V5H2.04A6.66 6.66 0 0 0 1.33 8c0 1.07.26 2.09.71 3l2.22-1.72Z" fill="currentColor" fill-opacity="0.7"/>
+                <path d="M8 3.97c.98 0 1.86.34 2.55 1l1.91-1.91C11.3 1.99 9.8 1.33 8 1.33A6.66 6.66 0 0 0 2.04 5l2.22 1.72C4.79 5.14 6.26 3.97 8 3.97Z" fill="currentColor" fill-opacity="0.9"/>
+              </svg>
+              <span>Continue with Google</span>
+            </a>
+            <p class="cta-subline">start with one task</p>
+          </div>
+
+          <div class="hero-baseline">
+            <p>It doesn't just remember what you want to do. It figures out how you can get it done.</p>
+            <a class="text-link" href="#how-it-works">See how it works</a>
+          </div>
+        </div>
+
+        <aside class="hero-visual" aria-label="Product preview showing completed task rows beside a growing weekly botanical mosaic">
+          <div class="visual-frame">
+            <div class="visual-header">
+              <span class="mono-label">Today</span>
+              <span class="mono-muted">Thu, Week 14</span>
+            </div>
+            <div class="visual-split">
+              <ul class="hero-task-list" aria-label="Sample today tasks">
+                <li class="hero-task is-done">
+                  <span class="task-check" aria-hidden="true">x</span>
+                  <span class="task-name">Scan type specimen sketches</span>
+                  <span class="task-dur">25m</span>
+                </li>
+                <li class="hero-task is-done">
+                  <span class="task-check" aria-hidden="true">x</span>
+                  <span class="task-name">Send client invoice for Stage 2</span>
+                  <span class="task-dur">15m</span>
+                </li>
+                <li class="hero-task is-done">
+                  <span class="task-check" aria-hidden="true">x</span>
+                  <span class="task-name">Draft fellowship artist statement</span>
+                  <span class="task-dur">45m</span>
+                </li>
+                <li class="hero-task is-next">
+                  <span class="task-check" aria-hidden="true"></span>
+                  <span class="task-name">Test paper stock for binder</span>
+                  <span class="task-dur">30m</span>
+                </li>
+              </ul>
+
+              <div class="hero-mosaic-panel">
+                <div class="hero-mosaic-grid" id="hero-mosaic" aria-hidden="true"></div>
+                <p class="mono-caption">9 tiles revealed</p>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="section" id="how-it-works" data-reveal>
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">How it works</p>
+          <h2 class="section-title">You write what is on your mind. The assistant proposes. You decide.</h2>
+          <p class="loop-line" aria-label="Planning loop">
+            Capture &rarr; Understand &rarr; Break down &rarr; Schedule &rarr; Execute &rarr; Adapt
+          </p>
+        </div>
+
+        <div class="how-grid">
+          <ol class="steps-list">
+            <li class="step-item">
+              <span class="step-num">01</span>
+              <div class="step-body">
+                <h3>Describe your task</h3>
+                <p>Write in plain paragraphs about a studio brief, an upcoming deadline, or the hours you have this week. No rigid forms to fill out before you start.</p>
+              </div>
+            </li>
+            <li class="step-item">
+              <span class="step-num">02</span>
+              <div class="step-body">
+                <h3>Make the plan your own</h3>
+                <p>The assistant breaks the work into clear steps, milestones, and a draft schedule. You approve, edit, or reject each item before anything is saved. Nothing moves silently.</p>
+              </div>
+            </li>
+            <li class="step-item">
+              <span class="step-num">03</span>
+              <div class="step-body">
+                <h3>Finish today's tasks</h3>
+                <p>Open the planner in the morning to see what belongs to today, and check off what you finish at night to adapt tomorrow and close the loop.</p>
+              </div>
+            </li>
+          </ol>
+
+          <div class="today-preview" aria-label="Example plan preview of the Today screen">
+            <div class="preview-topbar">
+              <span class="mono-label">Example plan</span>
+              <span class="mono-muted">Today</span>
+            </div>
+
+            <div class="preview-days" role="list" aria-label="Monday to Friday schedule strip">
+              <div class="day-pill" role="listitem">
+                <span class="day-name">Mon</span>
+                <span class="day-count">2</span>
+              </div>
+              <div class="day-pill" role="listitem">
+                <span class="day-name">Tue</span>
+                <span class="day-count">3</span>
+              </div>
+              <div class="day-pill is-active" role="listitem" aria-current="date">
+                <span class="day-name">Wed</span>
+                <span class="day-count">3</span>
+              </div>
+              <div class="day-pill" role="listitem">
+                <span class="day-name">Thu</span>
+                <span class="day-count">2</span>
+              </div>
+              <div class="day-pill" role="listitem">
+                <span class="day-name">Fri</span>
+                <span class="day-count">1</span>
+              </div>
+            </div>
+
+            <div class="preview-project">
+              <div class="project-meta">
+                <span class="mono-muted">Project</span>
+                <p class="project-title">Editorial Zine Issue 04</p>
+              </div>
+              <span class="project-tag">Approved plan</span>
+            </div>
+
+            <ul class="preview-tasks">
+              <li class="preview-task">
+                <span class="preview-box" aria-hidden="true"></span>
+                <span class="preview-task-title">Sequence 16-page spread dummy</span>
+                <span class="preview-task-dur">40m</span>
+              </li>
+              <li class="preview-task">
+                <span class="preview-box" aria-hidden="true"></span>
+                <span class="preview-task-title">Retouch cover contact sheet</span>
+                <span class="preview-task-dur">25m</span>
+              </li>
+              <li class="preview-task">
+                <span class="preview-box" aria-hidden="true"></span>
+                <span class="preview-task-title">Send Risograph ink specs to print shop</span>
+                <span class="preview-task-dur">15m</span>
+              </li>
+            </ul>
+
+            <div class="preview-footer">
+              <span>3 tasks · 1h 20m</span>
+              <span>Edited by you</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="the-mosaic" data-reveal>
+      <div class="container mosaic-grid-layout">
+        <div class="mosaic-copy">
+          <p class="eyebrow">The mosaic</p>
+          <h2 class="section-title">This is not a streak to protect or a score to beat.</h2>
+          <p class="mosaic-lead">Every task you actually finish reveals one tile in a weekly botanical pixel mosaic. Missing a day never resets your work or breaks a chain.</p>
+          <p class="mosaic-keep">Each week brings a new canvas. Keep every composition.</p>
+        </div>
+
+        <div class="mosaic-demo-card">
+          <div class="mosaic-demo-head">
+            <span class="mono-label">Weekly canvas demo</span>
+            <span class="mono-muted" id="mosaic-counter">10 / 24 tiles</span>
+          </div>
+
+          <div class="mosaic-stage">
+            <div class="mosaic-canvas" id="demo-mosaic" role="img" aria-label="Interactive botanical pixel mosaic with 10 of 24 tiles revealed"></div>
+          </div>
+
+          <div class="mosaic-controls">
+            <div class="mosaic-btn-row">
+              <button type="button" class="btn btn-primary" id="mosaic-demo-btn">Complete an example task</button>
+              <button type="button" class="btn btn-quiet" id="mosaic-reset-btn" hidden>Reset canvas</button>
+            </div>
+            <p class="mosaic-status" id="mosaic-status" aria-live="polite">10 of 24 tiles revealed this week. Next: Photograph ceramic test tiles (20m).</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section final-cta" data-reveal>
+      <div class="container final-cta-inner">
+        <h2 class="final-cta-title">Your first plan starts here.</h2>
+        <a class="btn btn-primary btn-google" href="/auth/google" data-auth-action="google">
+          <svg class="google-mark" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M14.4 8.18c0-.48-.04-.94-.12-1.38H8v2.62h3.59a3.07 3.07 0 0 1-1.33 2.01v1.67h2.15c1.26-1.16 1.99-2.87 1.99-4.92Z" fill="currentColor"/>
+            <path d="M8 14.67c1.8 0 3.31-.6 4.41-1.61l-2.15-1.67c-.6.4-1.36.64-2.26.64-1.74 0-3.21-1.17-3.74-2.75H2.04v1.72A6.66 6.66 0 0 0 8 14.67Z" fill="currentColor" fill-opacity="0.85"/>
+            <path d="M4.26 9.28A4.01 4.01 0 0 1 4.05 8c0-.44.08-.87.21-1.28V5H2.04A6.66 6.66 0 0 0 1.33 8c0 1.07.26 2.09.71 3l2.22-1.72Z" fill="currentColor" fill-opacity="0.7"/>
+            <path d="M8 3.97c.98 0 1.86.34 2.55 1l1.91-1.91C11.3 1.99 9.8 1.33 8 1.33A6.66 6.66 0 0 0 2.04 5l2.22 1.72C4.79 5.14 6.26 3.97 8 3.97Z" fill="currentColor" fill-opacity="0.9"/>
+          </svg>
+          <span>Continue with Google</span>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <p>Personal OS / Your progress takes shape.</p>
+      <p>One task at a time.</p>
+    </div>
+  </footer>
+
+  <script src="app.js" defer></script>
+</body>
+</html>

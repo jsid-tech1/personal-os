@@ -11,7 +11,7 @@
   let stopAuthObserver = null;
   let accountVersion = 0;
   const listeners = new Set();
-  const status = { ready: false, user: null, busy: null, error: "", errorCode: "", lastSaved: null };
+  const status = { ready: false, user: null, busy: null, error: "", errorCode: "", setupRequired: false, lastSaved: null };
 
   function withTimeout(promise, milliseconds, text) {
     let timer;
@@ -48,6 +48,11 @@
 
   function message(error) {
     const code = String(error.code || "").replace(/^firestore\//, "");
+    const raw = String(error.message || "");
+    if (/SERVICE_DISABLED|API_DISABLED/i.test(code + " " + raw) ||
+        (/firestore(?:\.googleapis\.com| API)/i.test(raw) && /has not been used|disabled|enable it/i.test(raw))) {
+      return "Cloud backup needs setup: this Firebase project's Firestore API is disabled. Enable the API and create the default database using the links below, then try your backup again. Your local work is unchanged.";
+    }
     const messages = {
       "auth/operation-not-allowed": "Enable Google sign-in in Firebase Console → Authentication → Sign-in method.",
       "auth/configuration-not-found": "Set up Firebase Authentication and enable the Google provider in Firebase Console.",
@@ -107,12 +112,12 @@
 
   async function run(busy, action) {
     if (status.busy) throw new Error("Wait for the current Firebase request to finish.");
-    update({ busy, error: "", errorCode: "" });
+    update({ busy, error: "", errorCode: "", setupRequired: false });
     try {
       return await action();
     } catch (error) {
       const text = message(error);
-      update({ error: text, errorCode: error.code || "" });
+      update({ error: text, errorCode: error.code || "", setupRequired: /Cloud backup needs setup|Create the default/i.test(text) });
       throw new Error(text);
     } finally {
       update({ busy: null });
