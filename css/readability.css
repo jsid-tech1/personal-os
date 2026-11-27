@@ -185,6 +185,9 @@ textarea.input { height: auto; min-height: 112px; }
   .cal-rail-list { display: flex; flex-direction: column; }
   .cal-rail-list .rail-task { width: 100%; border-right: 0; }
   .focus-page .focus-title { font-size: 34px; line-height: 1.15; overflow-wrap: anywhere; }
+  .focus-top { flex-wrap: wrap; gap: 8px; }
+  .focus-top>.btn { padding-inline: 8px; }
+  .focus-mode-label { order: 1; flex-basis: 100%; text-align: center; }
   .focus-task-actions { flex-wrap: wrap; }
   .planner-task { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 8px 12px; }
   .planner-task>.planner-time { grid-column: 1; grid-row: 1; }
@@ -195,6 +198,10 @@ textarea.input { height: auto; min-height: 112px; }
   .topbar { gap: 8px; }
   .topbar-left { gap: 4px; flex: 1; }
   .crumb { font-size: 13px; }
+}
+@media (max-width: 480px) {
+  .plan-dialog .plan-step { grid-template-columns: minmax(0, 1fr) 44px; }
+  .plan-step label:nth-of-type(2) { grid-column: 1 / -1; }
 }
 
 /* Public page: body copy should be readable without zooming. */
