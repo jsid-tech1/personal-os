@@ -412,5 +412,19 @@
     };
   }
 
+  // Demo data is opt-in. A new account starts with its own empty workspace.
+  function buildEmpty(user = {}) {
+    const data = buildSeed();
+    for (const key of ["projects", "tasks", "events", "habits", "notes", "brainDumps", "notifications", "focusSessions"]) data[key] = [];
+    const name = user.name || "Your workspace";
+    const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(word => word[0]).join("").toUpperCase();
+    Object.assign(data.settings, { name, initials, role: "", onboarded: false, capacity: 120, workDays: [1, 2, 3, 4, 5] });
+    data.mosaics = {};
+    data.profile = { name, initials, role: "" };
+    data.reflection = { wins: [], note: "" };
+    return data;
+  }
+
   POS.buildSeed = buildSeed;
+  POS.buildEmpty = buildEmpty;
 })();

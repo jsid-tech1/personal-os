@@ -192,7 +192,8 @@
   };
 
   const icon = (name, cls = "") => {
-    const p = PATHS[name] || PATHS.dot;
+    const key = String(name).replace(/[A-Z]/g, letter => "-" + letter.toLowerCase());
+    const p = PATHS[key] || PATHS.dot;
     return `<svg class="ico ${cls}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${p}</svg>`;
   };
 

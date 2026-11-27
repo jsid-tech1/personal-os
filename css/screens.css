@@ -32,7 +32,7 @@
   color: var(--ink-4);
   margin-left: 1px;
 }
-.chip[aria-pressed="true"] .chip-count { color: rgba(251, 251, 249, 0.6); }
+.chip[aria-pressed="true"] .chip-count { color: var(--on-accent); opacity: 0.75; }
 
 .legend-swatch {
   width: 8px;
@@ -160,11 +160,53 @@
    Today
    ========================================================= */
 
+<<<<<<< HEAD
 .day-sheet { max-width: 1160px; }
 .day-head { margin-bottom: var(--s5); }
 .day-head .page-title { font-size: 3.5rem; letter-spacing: -0.025em; }
 .day-date { display: block; margin-top: 6px; color: var(--ink-2); }
 .day-layout {
+=======
+.focus-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line-soft);
+  transition: background var(--t-fast) var(--ease);
+}
+.focus-row:last-child { border-bottom: 0; }
+.focus-row:hover { background: var(--surface-hover); }
+.focus-row .check { flex: 1; align-items: center; min-width: 0; }
+.focus-row .check-label { min-width: 0; }
+.focus-index {
+  width: 20px;
+  flex: none;
+  font-size: 11px;
+  color: var(--ink-4);
+  letter-spacing: 0.02em;
+}
+.focus-row .focus-title {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 450;
+  letter-spacing: -0.006em;
+  line-height: 1.35;
+}
+.focus-row .row-meta { margin-top: 3px; gap: 7px; }
+.focus-dur {
+  font-size: 10px;
+  color: var(--ink-3);
+  letter-spacing: -0.01em;
+  flex: none;
+}
+.focus-row .icon-btn { color: var(--ink-4); }
+.focus-row:hover .icon-btn { color: var(--ink-2); }
+.focus-row .icon-btn:hover { color: var(--accent); background: var(--accent-wash); }
+
+.timeline { padding: 4px 0; }
+.tl-row {
+>>>>>>> 196832040d9384cac7bfb875f089b4300511be07
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(220px, 27%);
   grid-template-areas: "priorities margin" "schedule margin" "later margin";
@@ -410,7 +452,6 @@
   color: var(--ink);
 }
 .composer-input::placeholder { color: var(--ink-4); }
-.composer-input:focus { outline: none; }
 .composer-bar {
   display: flex;
   align-items: center;
@@ -616,7 +657,7 @@
   padding: 14px 18px;
   text-align: left;
 }
-.ms-toggle:hover { background: #f6f6f2; }
+.ms-toggle:hover { background: var(--surface-hover); }
 .ms-num {
   width: 22px;
   flex: none;
@@ -1182,7 +1223,7 @@
 }
 .cal-month-cell:nth-child(7n + 1) { border-left: 0; }
 .cal-month-cell:hover { background: var(--paper); }
-.cal-month-cell.is-outside { background: #f6f6f2; }
+.cal-month-cell.is-outside { background: var(--surface-hover); }
 .cal-month-cell.is-outside .cal-month-num { color: var(--ink-4); }
 .cal-month-cell.is-today { background: var(--accent-wash); }
 .cal-month-cell.is-drop { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
@@ -1277,6 +1318,7 @@
   transition: background var(--t-fast) var(--ease);
 }
 .planner-task:last-child { border-bottom: 0; }
+<<<<<<< HEAD
 .planner-task:hover { background: #f6f6f2; }
 .planner-task.is-proposed {
   margin: var(--s1) var(--s2);
@@ -1285,6 +1327,9 @@
   border: 1px dashed var(--accent);
   border-radius: var(--r-sm);
 }
+=======
+.planner-task:hover { background: var(--surface-hover); }
+>>>>>>> 196832040d9384cac7bfb875f089b4300511be07
 .planner-task .check { flex: 1; align-items: center; min-width: 0; }
 .planner-time {
   width: 58px;
@@ -1338,7 +1383,7 @@
   transition: background var(--t-fast) var(--ease);
 }
 .notif:last-child { border-bottom: 0; }
-.notif:hover { background: #f6f6f2; }
+.notif:hover { background: var(--surface-hover); }
 .notif-icon {
   width: 30px;
   height: 30px;
@@ -1351,7 +1396,7 @@
   flex: none;
 }
 .notif-icon.is-new {
-  border-color: #cdd2f5;
+  border-color: var(--accent-line);
   background: var(--accent-wash);
   color: var(--accent);
 }
@@ -1628,7 +1673,7 @@
   height: 44px;
   display: grid;
   place-items: center;
-  border: 1px solid #cfe2d8;
+  border: 1px solid var(--positive-line);
   border-radius: 50%;
   background: var(--positive-soft);
   color: var(--positive);
@@ -1684,7 +1729,7 @@
 }
 .notes-tags .chip { font-size: 10px; height: 22px; padding: 0 7px; }
 .notes-tags .chip .mono { font-size: 8.5px; color: var(--ink-4); }
-.notes-tags .chip[aria-pressed="true"] .mono { color: rgba(251, 251, 249, 0.55); }
+.notes-tags .chip[aria-pressed="true"] .mono { color: var(--on-accent); opacity: 0.75; }
 .notes-rows { flex: 1; overflow-y: auto; min-height: 140px; }
 .notes-row {
   display: flex;
@@ -1751,7 +1796,6 @@
   letter-spacing: -0.012em;
 }
 .note-title-input::placeholder { color: var(--ink-4); }
-.note-title-input:focus { outline: none; }
 .notes-editor-meta {
   display: flex;
   align-items: center;
@@ -1778,7 +1822,6 @@
   line-height: 1.72;
   color: var(--ink-2);
 }
-.note-body:focus { outline: none; }
 .notes-props {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
@@ -1951,7 +1994,7 @@
 .habit-day-num { font-size: 10px; line-height: 1.2; color: var(--ink-2); }
 .habit-day-mark { height: 11px; display: flex; align-items: center; color: var(--positive); }
 .habit-day-mark .ico { width: 10px; height: 10px; }
-.habit-day.is-on { background: var(--positive-soft); border-color: #cfe2d8; }
+.habit-day.is-on { background: var(--positive-soft); border-color: var(--positive-line); }
 .habit-day.is-on .habit-day-num { color: var(--positive); font-weight: 600; }
 .habit-day.is-today { box-shadow: inset 0 0 0 1px var(--ink); }
 .habit-analysis { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -1973,7 +2016,7 @@
 }
 .habit-cell:hover { background: var(--sunken-2); }
 .habit-cell.is-on { background: var(--positive); }
-.habit-cell.is-on:hover { background: #245a43; }
+.habit-cell.is-on:hover { background: var(--positive-hover); }
 .habit-cell.is-today { outline: 1px solid var(--ink); outline-offset: 1px; }
 .habit-mini-meta {
   display: flex;
@@ -2095,7 +2138,6 @@
   line-height: 1.65;
   color: var(--ink-2);
 }
-.rf-note-input:focus { outline: none; }
 .rf-empty-note { padding: 18px 0; font-size: 11px; line-height: 1.55; color: var(--ink-3); }
 
 /* =========================================================
@@ -2198,6 +2240,8 @@
 .data-num { font-size: 17px; letter-spacing: -0.035em; line-height: 1.2; }
 .data-note { font-size: 9.5px; line-height: 1.4; color: var(--ink-3); }
 .data-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+.cloud-account { min-width: 0; overflow-wrap: anywhere; }
+#s-cloud .note span { min-width: 0; overflow-wrap: anywhere; }
 .settings-foot {
   padding-top: 14px;
   border-top: 1px solid var(--line);

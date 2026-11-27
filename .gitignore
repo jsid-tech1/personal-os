@@ -1,4 +1,20 @@
+<<<<<<< HEAD
 .env
 .env.*
 !.env.example
 node_modules/
+=======
+node_modules/
+test-results/
+playwright-report/
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+dist/
+.taste-skill/
+.env
+.env.*
+!.env.example
+functions/.secret.local
+*-service-account.json
+>>>>>>> 196832040d9384cac7bfb875f089b4300511be07

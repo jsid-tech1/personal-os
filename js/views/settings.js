@@ -6,15 +6,13 @@
   const { icon, esc } = { icon: U.icon, esc: U.escapeHTML };
   const store = POS.store;
   const ui = POS.ui;
+  let unsubscribeCloud = null;
 
   const SECTIONS = [
     ["profile", "Profile"],
     ["work", "Work & planning"],
-    ["notifications", "Notifications"],
-    ["assistant", "Assistant"],
-    ["connections", "Connections"],
+    ["connections", "Cloud connection"],
     ["data", "Backup & restore"],
-    ["privacy", "Privacy & security"],
   ];
 
   function bytesLabel(n) {
@@ -25,7 +23,7 @@
 
   function storageSize() {
     try {
-      return new Blob([localStorage.getItem("personal-os:v1") || ""]).size;
+      return new Blob([JSON.stringify(store.get())]).size;
     } catch (err) {
       return 0;
     }
@@ -35,7 +33,70 @@
     ui.toast(label + " saved.");
   }
 
+  function renderCloud(main) {
+    const host = main.querySelector("#s-cloud");
+    if (!host) return;
+    const cloud = POS.cloud;
+    const s = cloud.getStatus();
+    const logout = main.querySelector("#s-profile-logout");
+    if (logout) {
+      logout.disabled = !s.user || !!s.busy;
+      logout.textContent = s.busy === "signing-out" ? "Logging out…" : "Log out";
+    }
+    const disabled = s.busy ? "disabled" : "";
+    const progress = {
+      loading: "Connecting to Firebase…", "signing-in": "Waiting for Google sign-in…",
+      "signing-out": "Signing out…", saving: "Saving your cloud backup…", restoring: "Reading your cloud backup…",
+    };
+    const label = s.busy ? progress[s.busy] : s.user ? "Signed in with Google" : s.ready ? "Ready to sign in" : "Connection unavailable";
+    host.innerHTML = `
+      <div class="stack gap-3">
+        <div class="row gap-3">
+          <span class="settings-conn-icon">${icon("cloud")}</span>
+          <div class="grow cloud-account">
+            <h3 class="settings-label">Firebase cloud backup</h3>
+            <p class="field-help">${s.user ? esc(s.user.email || s.user.name || "Google account") : "Sign in with Google to save a copy outside this browser."}</p>
+          </div>
+        </div>
+        <p class="field-help" role="status">${esc(label)}${s.lastSaved ? " · Last saved " + esc(new Date(s.lastSaved).toLocaleString()) : ""}</p>
+        ${s.error ? `<div class="note note-warning" role="alert">${icon("warning")}<span>${esc(s.error)}</span></div>` : ""}
+        <div class="data-actions">
+          ${!s.ready ? `<button class="btn" id="s-cloud-retry" ${disabled}>${icon("rotate")} Retry connection</button>` : s.user ? `
+            <button class="btn btn-primary" id="s-cloud-save" ${disabled}>${icon("upload")} Save cloud backup</button>
+            <button class="btn" id="s-cloud-restore" ${disabled}>${icon("download")} Restore cloud backup</button>
+            <button class="btn btn-ghost" id="s-cloud-signout" ${disabled}>Sign out</button>` : `
+            <button class="btn btn-primary" id="s-cloud-signin" ${disabled}>${icon("user")} Continue with Google</button>`}
+        </div>
+        <p class="field-help">One manual recovery copy per Google account. Saving replaces it; restoring replaces your active workspace after confirmation. Automatic workspace sync is separate; its status is shown in Profile above. Signing out keeps the local copy.</p>
+      </div>`;
+    const analytics = main.querySelector("#s-analytics-status");
+    if (analytics) analytics.textContent = s.analytics === "enabled" ? "Firebase Analytics is enabled for usage measurement." :
+      s.analytics === "loading" ? "Firebase Analytics is initializing." : "Firebase Analytics is unavailable in this browser or connection.";
+    const bind = (id, action, success) => {
+      const button = host.querySelector(id);
+      if (!button) return;
+      button.addEventListener("click", async () => {
+        try {
+          const result = await action();
+          if (success && result !== false) ui.toast(success);
+        } catch (error) {
+          ui.toast(error.message, { kind: "danger" });
+        }
+      });
+    };
+    bind("#s-cloud-retry", () => cloud.start());
+    bind("#s-cloud-signin", () => cloud.signIn());
+    bind("#s-cloud-signout", () => cloud.signOut(), "Signed out. Your local workspace is still here.");
+    bind("#s-cloud-save", () => cloud.saveBackup(), "Cloud backup saved to your Google account.");
+    bind("#s-cloud-restore", () => cloud.restoreBackup((data) => ui.confirm({
+      title: "Restore your cloud backup?",
+      body: `This backup holds ${data.tasks.length} tasks, ${data.projects.length} projects and ${data.notes.length} notes. It replaces this device's workspace. Export a file first if you want to keep the current version.`,
+      confirmLabel: "Restore cloud backup",
+    })), "Cloud backup restored on this device.");
+  }
+
   function render(main) {
+    if (unsubscribeCloud) unsubscribeCloud();
     const st = store.get();
     const s = st.settings;
     const size = storageSize();
@@ -52,11 +113,11 @@
       <div class="page">
         <header class="page-head">
           <div>
-            <h1 class="page-title">Control <em>Centre</em></h1>
+            <h1 class="page-title">Your profile.</h1>
             <div class="page-sub">
-              <span>All settings stay on this device</span>
+              <span>Local workspace · optional Firebase cloud backup</span>
               <span class="dot-sep">·</span>
-              <span class="mono">VERSION 1.0 · LOCAL BUILD</span>
+              <span class="mono">VERSION 1.0</span>
             </div>
           </div>
           <div class="page-actions">
@@ -74,7 +135,7 @@
                 <span class="dot"></span>
                 <span id="s-conn-status">${navigator.onLine ? "Online" : "Offline"}</span>
               </span>
-              <span class="mono">NO ACCOUNT · NO SERVER</span>
+              <span class="mono">LOCAL + FIREBASE</span>
             </div>
           </nav>
 
@@ -82,7 +143,7 @@
             <section class="settings-section" id="set-profile">
               <div class="settings-head">
                 <h2>Profile</h2>
-                <p>Used for greeting copy and the avatar. Nothing is uploaded.</p>
+                <p>${esc(POS.cloud.getStatus().user?.email || "Your Google account")} / Your space, your pace.</p>
               </div>
               <div class="panel">
                 <div class="panel-body stack gap-4">
@@ -107,14 +168,26 @@
                     <span class="field-help">Changes update the greeting and avatar immediately.</span>
                     <button class="btn btn-primary btn-sm" id="s-save-profile">Save profile</button>
                   </div>
+                  <div class="row-item settings-row">
+                    <div class="grow">
+                      <div class="row-title settings-label">Google account</div>
+                      <p class="field-help">Logging out keeps your saved work in this browser. Cloud backups are manual.</p>
+                    </div>
+                    <button class="btn" id="s-profile-logout" type="button">Log out</button>
+                  </div>
                 </div>
+              </div>
+              <div class="sync-panel">
+                <h3>Across your devices</h3><p data-sync-status role="status">${esc(POS.sync?.status().error || POS.sync?.status().text || "Connecting cloud storage…")}</p>
+                <div class="plan-actions"><button class="btn" id="s-sync-retry" type="button">Retry cloud sync</button><button class="btn" id="s-sync-local" type="button">Keep this device’s version</button><button class="btn" id="s-sync-remote" type="button">Load cloud version</button><a class="btn btn-ghost" href="#/mosaic">My mosaic archive</a></div>
+                <p class="field-help">Local changes save automatically. Cloud errors are shown here. Resolve a device conflict deliberately; export a backup before replacing either version.</p>
               </div>
             </section>
 
             <section class="settings-section" id="set-work">
               <div class="settings-head">
-                <h2>Work & planning</h2>
-                <p>These numbers feed the local planner, not a preference stored in the cloud.</p>
+                <h2>Working availability</h2>
+                <p>Your plans use these days and leave room for work already scheduled.</p>
               </div>
               <div class="panel">
                 <div class="rows">
@@ -124,19 +197,9 @@
                       <div class="row-meta">The most focused work a day can hold. The planner stops here.</div>
                     </div>
                     <div class="row gap-2">
-                      <input class="input" type="number" id="s-capacity" min="60" max="720" step="15" value="${s.capacity}" style="width:88px;height:30px" aria-label="Daily capacity in minutes" />
+                      <input class="input" type="number" id="s-capacity" min="15" max="720" step="15" value="${s.capacity}" style="width:88px;height:30px" aria-label="Daily capacity in minutes" />
                       <span class="mono" style="font-size:10px;color:var(--ink-3)">MIN</span>
                     </div>
-                  </div>
-                  <div class="row-item settings-row">
-                    <div class="grow">
-                      <div class="row-title settings-label">Week starts on Monday</div>
-                      <div class="row-meta">Calendar and reflection both follow this.</div>
-                    </div>
-                    <label class="switch">
-                      <input type="checkbox" data-setting="weekStartsMonday" ${s.weekStartsMonday ? "checked" : ""} />
-                      <span class="track"></span><span class="sr-only">Week starts on Monday</span>
-                    </label>
                   </div>
                   <div class="row-item settings-row">
                     <div class="grow">
@@ -228,31 +291,16 @@
 
             <section class="settings-section" id="set-connections">
               <div class="settings-head">
-                <h2>Connections</h2>
-                <p>Shown honestly. A row marked not connected is not pretending to be.</p>
+                <h2>Cloud backup</h2>
+                <p>A separate recovery copy, alongside automatic workspace sync.</p>
               </div>
               <div class="panel">
-                <div class="rows">
-                  ${[
-                    ["calendar", "External calendar", "calendar", "Bring in events from Google, Apple or Outlook. Not implemented in this build."],
-                    ["backup", "Cloud backup", "cloud", "Keep a copy outside this browser. Not connected; use export instead."],
-                    ["sync", "Device sync", "wifi", "Keep two devices in step. No account or sync service exists here."],
-                  ].map(([key, label, ico, desc]) => `
-                    <div class="row-item settings-row">
-                      <span class="settings-conn-icon">${icon(ico)}</span>
-                      <div class="grow">
-                        <div class="row-title settings-label">${label}</div>
-                        <div class="row-meta">${desc}</div>
-                      </div>
-                      <span class="tag tag-outline tag-mono">NOT CONNECTED</span>
-                      <button class="btn btn-sm" disabled title="Not available in this build">Connect</button>
-                    </div>`).join("")}
-                </div>
+                <div class="panel-body" id="s-cloud"></div>
                 <div class="panel-foot">
                   <div class="spread">
-                    <p class="field-help">The local calendar is real and editable. Sync with an outside account is not.</p>
+                    <p class="field-help">Your built-in calendar updates with your tasks. External calendar integrations are not needed.</p>
                     <span class="row gap-2 mono" style="font-size:10px;color:var(--ink-3)">
-                      <i class="pdot pdot-round" style="--tone:var(--positive)"></i> LOCAL CALENDAR ACTIVE
+                      <i class="pdot pdot-round" style="--tone:var(--positive)"></i> BUILT-IN CALENDAR
                     </span>
                   </div>
                 </div>
@@ -262,7 +310,7 @@
             <section class="settings-section" id="set-data">
               <div class="settings-head">
                 <h2>Backup & restore</h2>
-                <p>One JSON file holds everything: tasks, projects, notes, habits, sessions and settings.</p>
+                <p>Keep a recovery file of your tasks, calendar, mosaics, focus sessions and preferences.</p>
               </div>
               <div class="panel">
                 <div class="panel-body">
@@ -270,26 +318,26 @@
                     <div class="data-cell">
                       <span class="stat-label">Stored locally</span>
                       <span class="mono data-num">${bytesLabel(size)}</span>
-                      <span class="data-note">${counts.tasks} tasks · ${counts.notes} notes · ${counts.sessions} sessions</span>
+                      <span class="data-note">${counts.tasks} tasks / ${counts.sessions} focus sessions</span>
                     </div>
                     <div class="data-cell">
                       <span class="stat-label">Projects</span>
                       <span class="mono data-num">${counts.projects}</span>
-                      <span class="data-note">${counts.habits} habits · ${counts.dumps} dumps kept</span>
+                      <span class="data-note">${Object.keys(st.mosaics || {}).length} saved weekly canvases</span>
                     </div>
                     <div class="data-cell">
                       <span class="stat-label">Persistence</span>
-                      <span class="mono data-num" style="font-size:15px">LOCALSTORAGE</span>
-                      <span class="data-note">key personal-os:v1 · this browser only</span>
+                      <span class="mono data-num" style="font-size:15px">Local + cloud</span>
+                      <span class="data-note">Account-specific / cloud status above</span>
                     </div>
                   </div>
                   <div class="divider"></div>
                   <div class="data-actions">
                     <button class="btn" id="s-export-2">${icon("download")} Export everything</button>
                     <button class="btn" id="s-import-2">${icon("upload")} Import a backup</button>
-                    <button class="btn btn-danger" id="s-reset">${icon("trash")} Reset to sample data</button>
+                    <button class="btn btn-danger" id="s-reset">${icon("trash")} Clear workspace</button>
                   </div>
-                  <p class="field-help" style="margin-top:12px">Import replaces the current data after a confirmation. Reset throws away your changes and rebuilds the seeded demo.</p>
+                  <p class="field-help" style="margin-top:12px">Import and clear replace the active workspace across synced devices. Export a file first if you need to keep a copy.</p>
                 </div>
               </div>
             </section>
@@ -297,37 +345,58 @@
             <section class="settings-section" id="set-privacy">
               <div class="settings-head">
                 <h2>Privacy & security</h2>
+<<<<<<< HEAD
                 <p>Your saved workspace stays in this browser. DeepSeek is optional.</p>
+=======
+                <p>Local work stays available offline. Google sign-in gives you a private cloud backup.</p>
+>>>>>>> 196832040d9384cac7bfb875f089b4300511be07
               </div>
               <div class="panel">
                 <div class="panel-body">
                   <dl class="def settings-def">
                     <dt>Where data lives</dt>
+<<<<<<< HEAD
                     <dd><span class="value">localStorage</span>, on this device, under one key. No account sync or analytics.</dd>
+=======
+                    <dd><span class="value">localStorage</span> on this device. Save cloud backup also stores a workspace snapshot in Cloud Firestore under your Google account.</dd>
+>>>>>>> 196832040d9384cac7bfb875f089b4300511be07
                     <dt>Who can read it</dt>
-                    <dd>Anyone with access to this browser profile and this device. A passcode or device lock is the real protection.</dd>
+                    <dd>Anyone with access to this browser profile can read its local copy, including after sign-out. Published Firestore rules restrict cloud access to your signed-in account; Firebase project administrators also have administrative access.</dd>
                     <dt>Network use</dt>
+<<<<<<< HEAD
                     <dd>On-device planning works offline. DeepSeek needs a connection and is only used when you turn it on.</dd>
                     <dt>AI processing</dt>
                     <dd>With DeepSeek on, submitted messages and recorded turns go to DeepSeek. The app doesn’t save audio. Workspace details require a separate opt-in.</dd>
+=======
+                    <dd>Firebase SDKs, Google sign-in and cloud backup use a network connection. Fonts and local planning remain available from the app's files. <span id="s-analytics-status"></span></dd>
+                    <dt>AI processing</dt>
+                    <dd>Rule-based and local. No model provider is connected. Workspace text is sent to Firestore only when you save a cloud backup.</dd>
+>>>>>>> 196832040d9384cac7bfb875f089b4300511be07
                     <dt>What removes it</dt>
-                    <dd>Reset below, importing a backup, or clearing site data in the browser. Export first if it matters.</dd>
+                    <dd>Reset, importing or restoring a backup replaces the local workspace. Clearing browser site data removes the local copy. Cloud backups remain until replaced or deleted in Firebase Console.</dd>
                   </dl>
                   <div class="divider"></div>
                   <div class="spread">
-                    <div class="row gap-2" style="color:var(--ink-2);font-size:12px">${icon("lock")} There is no password to set in this build.</div>
-                    <button class="btn btn-danger btn-sm" id="s-clear">${icon("trash")} Clear all local data</button>
+                    <div class="row gap-2" style="color:var(--ink-2);font-size:12px">${icon("lock")} Google manages your sign-in. This app never receives your password.</div>
+                    <button class="btn btn-danger btn-sm" id="s-clear">${icon("trash")} Reset local workspace</button>
                   </div>
                 </div>
               </div>
             </section>
 
             <p class="settings-foot mono">
+<<<<<<< HEAD
               PERSONAL OS · VERSION 1.0 · LOCAL WORKSPACE · BUILT ${new Date().getFullYear()}
+=======
+              PERSONAL OS · VERSION 1.0 · FIREBASE CLOUD BACKUP · NO MODEL CONNECTED · BUILT ${new Date().getFullYear()}
+>>>>>>> 196832040d9384cac7bfb875f089b4300511be07
             </p>
           </div>
         </div>
       </div>`;
+
+    renderCloud(main);
+    unsubscribeCloud = POS.cloud.subscribe(() => renderCloud(main));
 
     /* section nav */
     main.querySelectorAll("[data-section]").forEach((a) => a.addEventListener("click", (e) => {
@@ -336,7 +405,34 @@
       if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
     }));
 
+    /* Account preferences and explicit cross-device conflict recovery. */
+    main.querySelector("#s-sync-retry").onclick = () => POS.sync.refresh();
+    const resolveSync = async choice => {
+      const accepted = await ui.confirm({ title: choice === "local" ? "Keep this device’s workspace?" : "Load the cloud workspace?", body: "This replaces the other version, not a merge. Export a backup first if you need both copies.", confirmLabel: choice === "local" ? "Keep local version" : "Load cloud version" });
+      if (accepted) POS.sync.refresh(choice);
+    };
+    main.querySelector("#s-sync-local").onclick = () => resolveSync("local");
+    main.querySelector("#s-sync-remote").onclick = () => resolveSync("remote");
+    const availability = document.createElement("fieldset");
+    availability.className = "day-picker settings-days";
+    availability.innerHTML = `<legend>Working days</legend>${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d, i) => `<label><input type="checkbox" value="${i}" ${(s.workDays || [1, 2, 3, 4, 5]).includes(i) ? "checked" : ""}><span>${d}</span></label>`).join("")}`;
+    main.querySelector("#set-work .panel").prepend(availability);
+    availability.onchange = event => {
+      const days = [...availability.querySelectorAll("input:checked")].map(el => Number(el.value));
+      if (!days.length) { event.target.checked = true; ui.toast("Keep at least one working day.", { kind: "danger" }); return; }
+      store.actions.updateSettings({ workDays: days });
+      ui.toast("Working days saved.");
+    };
+
     /* profile */
+    main.querySelector("#s-profile-logout").addEventListener("click", async () => {
+      try {
+        await POS.cloud.signOut();
+        ui.toast("Logged out. Your local workspace is still here.");
+      } catch (error) {
+        ui.toast(error.message, { kind: "danger" });
+      }
+    });
     const avatar = main.querySelector("#s-avatar");
     const initialsInput = main.querySelector("#s-initials");
     initialsInput.addEventListener("input", () => {
@@ -356,7 +452,7 @@
 
     /* work */
     main.querySelector("#s-capacity").addEventListener("change", (e) => {
-      const value = U.clamp(Number(e.target.value) || 300, 60, 720);
+      const value = U.clamp(Math.round(Number(e.target.value) || 120), 15, 720);
       e.target.value = value;
       store.actions.updateSettings({ capacity: value });
       toastSaved("Daily capacity");
@@ -425,17 +521,31 @@
 
     const reset = async () => {
       const ok = await ui.confirm({
-        title: "Reset to sample data?",
-        body: "Every task, project, note, habit and session you have changed will be replaced by the seeded demo. This cannot be undone unless you exported a backup.",
-        confirmLabel: "Reset everything",
+        title: "Clear your workspace?",
+        body: "This removes your tasks, projects, mosaic archive and focus sessions from the active workspace, including synced devices. Manual cloud backups are kept. Export a file first; this cannot be undone here.",
+        confirmLabel: "Clear workspace",
         danger: true,
       });
       if (!ok) return;
-      store.reset();
-      ui.toast("Reset to the seeded demo.");
+      store.clear();
+      store.flush();
+      location.hash = "#/today";
+      ui.toast("Workspace cleared. Your next plan starts fresh.");
     };
     main.querySelector("#s-reset").addEventListener("click", reset);
-    main.querySelector("#s-clear").addEventListener("click", reset);
+    main.querySelector("#s-clear").addEventListener("click", async () => {
+      const accepted = await ui.confirm({
+        title: "Clear this account's local workspace?",
+        body: "This removes this account's tasks, projects, notes, habits and sessions from this browser. Export a backup first if you need them. Your cloud backup is kept.",
+        confirmLabel: "Clear local workspace",
+        danger: true,
+      });
+      if (!accepted) return;
+      store.clear();
+      store.flush();
+      location.hash = "#/today";
+      ui.toast("Your workspace is empty and ready for a new plan.");
+    });
 
     /* online status */
     const status = main.querySelector("#s-conn-status");
@@ -445,5 +555,8 @@
   }
 
   POS.views = POS.views || {};
-  POS.views.settings = { render };
+  POS.views.settings = { render, destroy() {
+    if (unsubscribeCloud) unsubscribeCloud();
+    unsubscribeCloud = null;
+  } };
 })();

@@ -34,6 +34,10 @@ spacing:
 
 # Personal OS — Design
 
+## Current identity — mosaic planning rebuild
+
+The current app layers `css/studio.css` over the historical system below. See [docs/mosaic-product-plan.md](docs/mosaic-product-plan.md): MilesDane display headings, DM Mono interface/numerals, pale botanical paper, forest actions and raspberry/petal/chartreuse mosaic fragments. Real task completion earns the artwork. Light/dark themes and reduced motion are supported. The supplied Milesdane Trial is personal-use-only; obtain the appropriate license before public commercial release. Earlier Instrument Serif/Geist guidance below records the preceding design, not the current typography.
+
 **Mode:** Operate. This is a tool used daily, before coffee and after dinner. Scanability,
 consistency and calm outrank expression; the brand lives in precision and in a handful of
 authored moments.
@@ -44,8 +48,11 @@ A precision desk instrument built on archival paper. Hairline structure, ink typ
 signal colour. Nothing floats, nothing glows. Depth is declared once — a border, or a shadow,
 never both. Panels are planes of tone, not cards stacked on cards.
 
-**Why light:** the app is used at a desk in daylight and lamplight, for long stretches, with
-text as the primary content. Paper is the correct base, not a costume.
+**Appearance:** light mode uses archival paper for desk work; dark mode uses charcoal for
+low-light sessions. Both keep the same typography, hairlines and restrained signal colours.
+The top-bar sun/moon button switches modes and saves the choice in `personal-os:theme`.
+Before a choice is saved, appearance follows the device preference. Theme is applied before
+styles load, and changes sync between browser tabs.
 
 ## Colour
 
@@ -67,6 +74,11 @@ Semantic tones are muted and hue-tinted, never pure red/green:
 | Project identity | six restrained hues, see `tokens.css` |
 
 Projects carry a 6px square of their hue, never a coloured border or tinted panel.
+
+Dark mode remaps these roles in `tokens.css`: charcoal canvas (`#181A1B`), a lighter surface
+(`#202324`), warm off-white ink (`#EEEEE8`) and a legible blue signal (`#8FA3FF`). Semantic and
+project colours use lighter foregrounds over deep, muted tints. Native controls, selection,
+overlays, hover states and checked controls share the active theme.
 
 ## Type
 
