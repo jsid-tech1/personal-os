@@ -8,7 +8,7 @@ html.intro-running { overflow: hidden; }
 .intro-light { position: absolute; inset: -30%; background: radial-gradient(ellipse at 40% 40%, var(--surface) 0%, transparent 50%), radial-gradient(ellipse at 75% 75%, color-mix(in srgb, var(--lime) 13%, transparent), transparent 55%); }
 .intro-texture { position: absolute; inset: 0; opacity: .16; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.78' numOctaves='3' stitchTiles='stitch' seed='8'/%3E%3C/filter%3E%3Cpath fill='%23808080' filter='url(%23n)' opacity='.25' d='M0 0h160v160H0z'/%3E%3C/svg%3E"); }
 .intro-stage { position: absolute; left: 50%; top: 50%; width: 1440px; height: 900px; transform: translate(-50%, -50%) scale(var(--intro-fit, 1)); }
-.intro-world { position: absolute; inset: 0; transform-origin: 50% 50%; }
+.intro-world { position: absolute; inset: 0; transform-origin: 50% 50%; transform: scale(1.18); }
 .intro-plan { position: absolute; left: 400px; top: 278px; width: 640px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r-lg); padding: 30px 36px 20px; transform-origin: 50% 50%; }
 .intro-plan-head { display: flex; align-items: center; gap: 12px; font-size: 15px; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
 .intro-plan-head>span:last-child { margin-left: auto; color: var(--ink-3); }
@@ -20,7 +20,7 @@ html.intro-running { overflow: hidden; }
 .intro-task-name { position: relative; }
 .intro-task-name::after { content: ""; position: absolute; top: 52%; left: 0; width: 100%; height: 1px; background: currentColor; transform: scaleX(var(--strike, 0)); transform-origin: left; }
 .intro-duration { margin-left: auto; color: var(--ink-3); font-size: 13px; white-space: nowrap; }
-.intro-cursor { position: absolute; left: 68px; top: 322px; width: 25px; height: 31px; fill: var(--ink); stroke: var(--surface); stroke-width: 2; }
+.intro-cursor { position: absolute; left: 68px; top: 322px; width: 25px; height: 31px; fill: var(--ink); stroke: var(--surface); stroke-width: 2; opacity: 0; }
 .intro-mosaic { position: absolute; left: 470px; top: 150px; width: 500px; height: 500px; transform-origin: 0 0; }
 .intro-tile { position: absolute; width: 4.6%; height: 4.6%; background: var(--tile); opacity: 0; will-change: transform, opacity; }
 .intro-statement { position: absolute; left: 180px; top: 710px; width: 1080px; text-align: center; font: 400 76px/1.04 var(--font-display); letter-spacing: -.035em; margin: 0; }
@@ -34,6 +34,7 @@ html.intro-running { overflow: hidden; }
 .intro-debug input { flex: 1; min-width: 0; accent-color: var(--accent); }
 .intro-debug output { min-width: 12ch; font-variant-numeric: tabular-nums; }
 .site-intro.is-portrait .intro-stage { width: 600px; height: 1000px; }
+.site-intro.is-portrait .intro-world { transform: scale(1.06); }
 .site-intro.is-portrait .intro-plan { left: 40px; top: 308px; width: 520px; padding: 24px 26px 18px; }
 .site-intro.is-portrait .intro-plan-title { font-size: 43px; }
 .site-intro.is-portrait .intro-task { gap: 14px; font-size: 17px; }

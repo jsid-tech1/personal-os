@@ -1,6 +1,12 @@
+<<<<<<< HEAD
 /* Firebase verifies the caller before any model request. Secrets stay on the server. */
 const { generatePlan, validateInput, PlanningError } = require("./planner.cjs");
 const { converse } = require("./conversation.cjs");
+=======
+/* Authenticated planning and conversation transports; secrets stay on the server. */
+const { generatePlan, validateInput, PlanningError } = require("./planner.cjs");
+const { converse, validateMessages } = require("./conversation.cjs");
+>>>>>>> eaa4f2317ef581e48895c55391148951989000f4
 
 async function verifyToken(token) {
   const { getApps, initializeApp } = require("firebase-admin/app");
@@ -30,7 +36,7 @@ function createHandler({ verify = verifyToken, generate = generatePlan } = {}) {
     const now = Date.now();
     for (const [key, value] of limits) if (value.until <= now) limits.delete(key);
     const usage = limits.get(uid) || { count: 0, until: now + 60000 };
-    if (++usage.count > 5) return send(429, { error: "Wait a minute before generating another plan." });
+    if (++usage.count > 5) return send(429, { error: "Wait a minute before sending another request." });
     limits.set(uid, usage);
     if (req.headers["content-type"]?.split(";")[0].trim() !== "application/json") return send(415, { error: "Send the goal as JSON." });
     try {
@@ -47,13 +53,20 @@ function createHandler({ verify = verifyToken, generate = generatePlan } = {}) {
         try { body = JSON.parse(Buffer.concat(chunks).toString("utf8")); }
         catch { return send(400, { error: "Send a valid JSON goal description." }); }
       }
+<<<<<<< HEAD
       if (body?.mode === "conversation") return send(200, await converse(body));
+=======
+      if (body?.mode === "conversation") {
+        try { validateMessages(body.messages); } catch (error) { return send(400, { error: error.message }); }
+        if (!process.env.OPENAI_API_KEY) return send(503, { error: "Conversation is not configured. Set OPENAI_API_KEY on the server, or enter your brief directly." });
+        return send(200, await converse(body));
+      }
+>>>>>>> eaa4f2317ef581e48895c55391148951989000f4
       const input = validateInput(body);
       send(200, await generate(input));
     } catch (error) {
-      send(error instanceof PlanningError ? error.status : 502, { error: error instanceof PlanningError ? error.message : "The plan could not be generated. Try again, or choose On-device templates." });
+      send(error instanceof PlanningError ? error.status : 502, { error: error instanceof PlanningError ? error.message : "The request could not be completed. Retry, or choose On-device templates." });
     }
   };
 }
-
 module.exports = { handler: createHandler(), createHandler };

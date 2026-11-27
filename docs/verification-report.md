@@ -1,5 +1,11 @@
 # Verification report
 
+## Latest repair — Firestore disabled and committed merge conflicts
+
+The reported error requires project-owner activation of Firestore, database setup and private rules; it cannot be resolved through public Firebase web credentials alone. See [FIRESTORE_DISABLED_RECOVERY.md](FIRESTORE_DISABLED_RECOVERY.md). No production API activation or database creation is claimed. The app now provides a concise setup error and direct console actions, keeping the local workspace unchanged. Reconciled committed merge markers and duplicate script/root initialization while preserving the newer DeepSeek/live-voice code and manual-backup architecture.
+
+Focused results: **14 API/planning/integrity tests pass**, **six browser tests pass** (disabled API, backup retry, permission handling, DeepSeek flows). One separately selected legacy account-adoption test fails against the newer store's intentionally account-isolated behaviour; it was not rewritten or hidden. Production build passes. Earlier full-suite counts below are historical and do not describe this newer merged codebase.
+
 ## Follow-up — mosaic opening and screen reveals
 
 Verification: **42 passing tests**, no failures, one optional screenshot test skipped; build passes. The two loader-specific tests also passed after the final first-paint HTML/failure-fallback refinement. The fallback test disables the loader script with normal motion enabled and verifies the CSS layer hides itself.
