@@ -622,6 +622,100 @@
   background: var(--paper);
 }
 
+/* Capture becomes a conversation without leaving the sheet. */
+.conversation-sheet { height: 100dvh; }
+.conversation-sheet .sheet-body {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.conversation-sheet .sheet-head {
+  min-height: 72px;
+  padding-inline: var(--s5);
+}
+.conversation-sheet .sheet-head h2 { font: 400 1.875rem/1.1 var(--font-display); }
+.conversation-sheet .sheet-head .meta-line { color: var(--ink-2); font-size: var(--fs-xs); }
+.conversation-access {
+  border-bottom: 1px solid var(--line);
+  padding: var(--s2) var(--s5);
+  min-width: 0;
+  overflow-y: auto;
+  max-height: 42dvh;
+}
+.conversation-mode { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2); }
+.conversation-mode .btn, .conversation-consent .btn { min-height: 38px; }
+.conversation-consent, .conversation-share { margin-top: var(--s2); }
+.conversation-consent p, .conversation-share small { color: var(--ink-2); font-size: var(--fs-sm); }
+.conversation-consent p { margin-bottom: var(--s2); max-width: 55ch; }
+.conversation-share { padding-bottom: var(--s1); }
+.conversation-share small { display: block; }
+.conversation-thread {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--s5);
+}
+.conversation-intro h3 { font-size: var(--fs-h2); }
+.conversation-intro p {
+  margin-block: var(--s2) var(--s5);
+  color: var(--ink-2);
+  max-width: 42ch;
+}
+.conversation-log { display: grid; gap: var(--s4); align-content: start; }
+.conversation-user {
+  justify-self: end;
+  max-width: 90%;
+  min-width: 0;
+}
+.conversation-user p:not(.sr-only) {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--sunken);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4);
+}
+.conversation-answer {
+  border-top: 1px solid var(--line);
+  padding-top: var(--s3);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.conversation-answer h3 { margin-bottom: var(--s2); }
+.conversation-answer p, .conversation-answer li { color: var(--ink-2); }
+.conversation-stream { white-space: pre-wrap; overflow-wrap: anywhere; }
+.conversation-stream-status:empty { display: none; }
+.conversation-stream-status:not(:empty) { margin-top: var(--s2); }
+.conversation-answer ul { list-style: disc; padding-left: var(--s4); }
+.conversation-answer ul, .conversation-answer .row { margin-top: var(--s3); }
+.conversation-draft-action { display: flex; margin-left: auto; }
+.conversation-compose {
+  padding: var(--s3) var(--s5) calc(var(--s3) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+}
+.conversation-compose textarea {
+  display: block;
+  resize: vertical;
+  min-height: 64px;
+  max-height: 30dvh;
+  border-color: var(--line-strong);
+}
+.conversation-controls { display: flex; align-items: center; gap: var(--s1); margin-top: var(--s2); }
+.conversation-controls .btn, .conversation-controls .icon-btn, .conversation-sheet .sheet-head .icon-btn { min-height: 44px; }
+.conversation-controls .icon-btn, .conversation-sheet .sheet-head .icon-btn { min-width: 44px; }
+.conversation-controls [aria-pressed="true"] { color: var(--accent-ink); background: var(--accent-soft); }
+.conversation-send { margin-left: auto; }
+.conversation-status { font-size: var(--fs-xs); color: var(--ink-2); }
+.conversation-compose .conversation-status:empty { display: none; }
+.conversation-compose .conversation-status:not(:empty) { margin-top: var(--s2); }
+
+@media (max-width: 640px) {
+  .conversation-access, .conversation-thread, .conversation-compose, .conversation-sheet .sheet-head { padding-inline: var(--s4); }
+  .conversation-mode .btn, .conversation-consent .btn { min-height: 44px; }
+  .conversation-compose textarea { font-size: 16px; }
+}
+
 /* popover menu */
 .menu {
   position: absolute;

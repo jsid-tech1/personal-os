@@ -109,6 +109,99 @@ async function signIn(page) {
   await page.waitForFunction(() => !POS.cloud.getStatus().busy);
 }
 
+test("DeepSeek goal draft reviews milestones and only saves after approval", async t => {
+  const { page } = await open(t);
+  await signIn(page);
+  let sent;
+  await page.route("**/api/plan", route => {
+    sent = route.request().postDataJSON();
+    return route.fulfill({ contentType: "application/json", body: JSON.stringify({ title: "Design presentation", steps: [
+      { title: "Outline the story", duration: 30, milestone: "Shape the story" },
+      { title: "Build the slides", duration: 45, milestone: "Build and verify" },
+      { title: "Rehearse and export", duration: 20, milestone: "Build and verify" },
+    ] }) });
+  });
+  await page.evaluate(() => { location.hash = "#/goal"; });
+  await page.locator("#g-title").fill("Prepare my design presentation");
+  await page.locator("#g-desc").fill("Use the sketches I already have");
+  await page.locator("#g-cap").fill("120");
+  await page.locator("#g-draft").click();
+  await page.locator("#g-approve").waitFor();
+  assert.deepEqual(sent, { description: "Prepare my design presentation\n\nUse the sketches I already have", capacity: 120 });
+  assert.equal(await page.locator(".ms").count(), 2);
+  assert.equal(await page.locator(".plan-task").count(), 3);
+  assert.equal(await page.evaluate(() => POS.store.get().tasks.length), 0);
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.screenshot({ path: "test-results/deepseek-goal-desktop.png", fullPage: true });
+  await page.locator("#g-edit").click();
+  await page.locator('[data-edit-title="0-0"]').fill("Outline my presentation story");
+  await page.locator("#g-approve").click();
+  await page.locator("[data-yes]").click();
+  await page.waitForFunction(() => POS.store.get().tasks.length === 3);
+  assert.equal(await page.evaluate(() => POS.store.get().tasks[0].title), "Outline my presentation story");
+  assert.equal(await page.evaluate(() => POS.store.get().projects[0].milestones.length), 2);
+});
+
+test("DeepSeek goal errors stay visible on mobile and on-device fallback is explicit", async t => {
+  const { page } = await open(t, { viewport: { width: 390, height: 844 } });
+  await signIn(page);
+  await page.route("**/api/plan", route => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "The DeepSeek account has insufficient balance. Choose On-device templates." }) }));
+  await page.evaluate(() => { location.hash = "#/goal"; });
+  await page.locator("#g-title").fill("Finish my design portfolio");
+  await page.locator("#g-draft").click();
+  await page.locator('.goal-form [role="alert"]:not([hidden])').waitFor();
+  assert.match(await page.locator('.goal-form [role="alert"]').innerText(), /insufficient balance/);
+  assert.equal(await page.locator("#g-approve").count(), 0);
+  assert.equal(await page.evaluate(() => POS.store.get().tasks.length), 0);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.screenshot({ path: "test-results/deepseek-goal-mobile-error.png", fullPage: true });
+  await page.locator("#g-provider").selectOption("local");
+  await page.locator("#g-draft").click();
+  await page.locator("#g-approve").waitFor();
+  assert.match(await page.locator(".page-sub").innerText(), /On-device draft/);
+  assert.equal(await page.evaluate(() => POS.store.get().tasks.length), 0);
+});
+
+test("DeepSeek goal approval rechecks edited dates and changed calendar capacity", async t => {
+  const { page } = await open(t);
+  await signIn(page);
+  await page.route("**/api/plan", route => route.fulfill({ contentType: "application/json", body: JSON.stringify({ title: "Design presentation", steps: [{ title: "Draft the presentation", duration: 60, milestone: "Draft" }] }) }));
+  await page.evaluate(() => { location.hash = "#/goal"; });
+  await page.locator("#g-title").fill("Prepare my design presentation");
+  await page.locator("#g-cap").fill("60");
+  await page.locator("#g-draft").click();
+  await page.locator("#g-approve").waitFor();
+  await page.locator("#g-edit").click();
+  await page.locator('[data-edit-date="0-0"]').fill("2020-01-01");
+  await page.locator("#g-approve").click();
+  assert.equal(await page.locator("[data-yes]").count(), 0);
+  assert.equal(await page.evaluate(() => POS.store.get().tasks.length), 0);
+  const original = await page.locator("#g-date").inputValue();
+  const workingDay = await page.evaluate(deadline => { let date = deadline; while ([0, 6].includes(new Date(date + "T12:00").getDay())) date = POS.planning.add(date, -1); return date; }, original);
+  await page.locator('[data-edit-date="0-0"]').fill(workingDay);
+  await page.evaluate(date => POS.store.actions.addTask({ title: "Existing commitment", date, duration: 60 }), workingDay);
+  await page.locator("#g-approve").click();
+  assert.equal(await page.locator("[data-yes]").count(), 0);
+  assert.equal(await page.evaluate(() => POS.store.get().tasks.length), 1);
+});
+
+test("DeepSeek goal drafts disappear when the account changes", async t => {
+  const { page } = await open(t);
+  await signIn(page);
+  await page.route("**/api/plan", route => route.fulfill({ contentType: "application/json", body: JSON.stringify({ title: "Alice private goal", steps: [{ title: "Private draft", duration: 30, milestone: "Private milestone" }] }) }));
+  await page.evaluate(() => { location.hash = "#/goal"; });
+  await page.locator("#g-title").fill("Alice private goal description");
+  await page.locator("#g-draft").click();
+  await page.locator("#g-approve").waitFor();
+  await page.evaluate(() => mock.changeAccount("bob"));
+  await page.waitForFunction(() => POS.cloud.getStatus().user?.uid === "bob");
+  await page.locator("#g-title").waitFor();
+  assert.equal(await page.locator("#g-approve").count(), 0);
+  assert.equal(await page.locator("#g-title").inputValue(), "");
+  assert.equal(await page.evaluate(() => POS.store.get().tasks.length), 0);
+});
+
 test("initialization and Google sign-in preserve local work; explicit backup is account-scoped", async t => {
   const { page } = await open(t);
   await page.evaluate(() => POS.store.actions.addTask({ title: "Local task to preserve" }));

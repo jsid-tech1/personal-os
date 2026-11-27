@@ -15,7 +15,9 @@ the loop.
 
 CAPTURE → UNDERSTAND → BREAK DOWN → ORGANISE → SCHEDULE → EXECUTE → TRACK → ADAPT
 
-1. **Capture** — one free-text box, voice or file. No forms.
+1. **Capture** — one free-text box. Send a thought or question to start a conversation. Local
+   dictation and read-aloud are optional when the browser supports them. Plain-text files can
+   be inserted into a message.
 2. **Understand** — the assistant proposes tasks, goals, projects, notes, dates. Everything is
    editable before it is saved.
 3. **Break down** — a goal becomes milestones, milestones become tasks with estimates and
@@ -31,33 +33,38 @@ CAPTURE → UNDERSTAND → BREAK DOWN → ORGANISE → SCHEDULE → EXECUTE → 
 - The assistant proposes; the user decides. No silent edits, moves or deletes.
 - Proposed and existing are visually distinct, always.
 - Every control does what it says. No decorative buttons.
-- The AI is a **local, deterministic demo** in this build. No model is called, no key is used.
-  The UI says so where it matters.
-- External calendar sync remains **not connected**. Firebase provides Google sign-in and
-  explicit cloud backup/restore, with connection and error states shown in Settings.
-- Google sign-in is required at the opening welcome screen. Returning authenticated sessions
-  enter the requested screen; signing out closes the workspace and returns to welcome.
-  New users create their Firebase account through the same Google button.
-- New accounts start empty, using their Google display name. Today guides users through a first
-  real task, completion and explicit cloud backup; the populated demo is opt-in in Settings.
-- Data saves automatically in account-scoped localStorage. File export/import and Firestore backup/restore
-  are real. Cloud saving is manual, with one snapshot per Google account; it is not live sync.
-- Local planning can continue offline in an already authenticated, open session. A fresh launch
-  needs Firebase SDK loading and authentication before the workspace opens. Cloud operations
-  and Analytics use the network. Fonts are self-hosted.
+- **Google sign-in is the front door.** The workspace stays hidden until Firebase resolves the
+  session. Returning sessions open the requested screen; signing out closes the workspace and
+  returns to the welcome page. Google manages passwords and account recovery.
+- **New accounts start empty**, using the Google display name. There is no demo persona, no
+  sample tasks and no seeded project data. The first-run guide offers one real task and an
+  explicit cloud backup.
+- **Data is isolated by Google user ID** in account-scoped localStorage. Signing out keeps the
+  local copy but hides it. Switching accounts loads that account's own workspace.
+- **Goal Breakdown** offers a DeepSeek planning agent and an explicit on-device template option.
+  Only the goal, context and daily capacity go to DeepSeek; calendar scheduling and approval
+  validation run locally. Rescheduling uses local rules. In Capture,
+  the user can opt in to DeepSeek for general chat, turn-based voice, and drafts. See
+  [DeepSeek setup](DEEPSEEK.md). Workspace access is a separate choice.
+- **Cloud saving is manual.** One recovery snapshot per Google account in Cloud Firestore.
+  Sign-in does not upload the workspace, and there is no analytics. File export/import and
+  backup/restore are real.
+- External calendar sync remains **not connected**. It is labelled, not faked.
+- Offline-first: on-device planning and saved work remain usable without a connection. A fresh
+  sign-in needs the network. Fonts are self-hosted.
 
 ## Screens
 
-Today · Brain Dump · Goal Breakdown · Projects · Calendar · Daily Planner · Notifications ·
-Focus · Rescheduling · Notes · Habits · Reflection · Settings
+Welcome · Today · My Mosaic · Brain Dump · Goal Breakdown · Projects · Calendar · Daily Planner ·
+Notifications · Focus · Rescheduling · Notes · Habits · Reflection · Profile
 
 ## Scope of this build
 
-Static frontend with Firebase Authentication, Cloud Firestore snapshots and Firebase Analytics.
-`js/cloud.js` isolates the Firebase integration; `FIREBASE_SETUP.md` records console setup and
-deployment. Planning still uses a structured local mock service (`js/ai.js`); seeded sample
-data is available as an explicit reset. The mock layer is isolated so a real model can replace it without touching views.
+Static frontend with Firebase Authentication, optional Cloud Firestore backup, on-device rules
+(`js/ai.js`) and an optional local DeepSeek relay (`server.mjs`). `js/cloud.js` isolates the
+Firebase integration. Planning uses `js/planning.js`; the weekly artwork uses `js/mosaic.js`.
+The API key never reaches the browser. `FIREBASE.md` records console setup and rules deployment.
 
-The landing page shows an actual Today screenshot. `js/onboarding.js` owns the first-task guide.
-Local data is separated by Firebase UID, with a one-time migration of the legacy workspace.
-The course brief, proposal, rubric map, process log, stack guide and demo script are in `docs/`.
+Every new account starts empty. `js/onboarding.js` owns the first-task guide. Local data is
+separated by Firebase UID. An older anonymous workspace, if present, is left untouched and is
+not attached to the first Google account that signs in.

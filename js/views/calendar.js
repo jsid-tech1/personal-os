@@ -487,6 +487,7 @@
         const t = st.tasks.find((x) => x.id === p.taskId);
         return t && !t.done;
       });
+      const proposed = placed.filter((p) => !p.kept);
       s.el.querySelector(".modal-body").innerHTML = `
         <div class="stack gap-4">
           <div class="note">${icon("sparkles")}<div>${esc(plan.explanation)}</div></div>
@@ -494,13 +495,13 @@
             ${placed.length ? placed.map((p) => {
               const t = store.task(p.taskId);
               const pj = t.projectId ? store.project(t.projectId) : null;
-              return `<div class="proposal-row">
+              return `<div class="proposal-row${p.kept ? "" : " is-proposed"}">
                 <span class="mono proposal-time">${U.fmtMin(p.start)}</span>
                 <div class="grow">
                   <div class="proposal-title">${esc(t.title)}</div>
                   <div class="proposal-meta">${pj ? esc(pj.name) : "Personal"} · ${U.fmtDur(p.duration)}${t.date < date ? " · was " + U.relDate(t.date) : ""}</div>
                 </div>
-                ${p.kept ? '<span class="tag tag-outline tag-mono">STAYS</span>' : '<span class="tag tag-accent tag-mono">PROPOSED</span>'}
+                ${p.kept ? '<span class="planner-confirmed-label">Scheduled</span>' : '<span class="schedule-proposed-label">Proposed</span>'}
               </div>`;
             }).join("") : ui.emptyState("No open work", "Nothing is waiting for a slot on this day.")}
           </div>
@@ -508,23 +509,22 @@
           <p class="field-help">This creates no events and touches no external calendar. Approving only sets start times on your own tasks.</p>
         </div>`;
       s.el.querySelector(".modal-foot").innerHTML = `
-        <span class="mono grow" style="font-size:10.5px;color:var(--ink-3)">${placed.length} PLACEMENTS</span>
         <button class="btn" data-close>Keep as is</button>
-        <button class="btn btn-accent" id="apply-plan" ${placed.length ? "" : "disabled"}>${icon("check")} Apply ${placed.length} placements</button>`;
+        <button class="btn btn-accent" id="apply-plan" ${proposed.length ? "" : "disabled"}>${icon("check")} Approve ${proposed.length ? U.plural(proposed.length, "placement") : "placements"}</button>`;
       s.el.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => s.close()));
       s.el.querySelector("#apply-plan")?.addEventListener("click", () => {
         s.close();
         const apply = async () => {
           const ok = await ui.confirm({
             title: "Apply this schedule?",
-            body: `${placed.length} tasks will be placed on ${U.fmtDate(date, "long")}. Fixed events are untouched. You can drag any task afterwards.`,
+            body: `${U.plural(proposed.length, "task")} will be placed on ${U.fmtDate(date, "long")}. Already scheduled tasks and events won’t change.`,
             confirmLabel: "Apply placements",
           });
           if (!ok) return;
-          placed.forEach((p) => {
+          proposed.forEach((p) => {
             store.actions.updateTask(p.taskId, { date, start: p.start });
           });
-          ui.toast(`${placed.length} tasks placed on ${U.fmtDate(date, "short")}.`);
+          ui.toast(`${U.plural(proposed.length, "task")} scheduled on ${U.fmtDate(date, "short")}.`);
         };
         apply();
       });

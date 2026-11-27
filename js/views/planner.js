@@ -7,29 +7,25 @@
   const store = POS.store;
   const ui = POS.ui;
 
-  const state = { date: U.todayISO(), plan: null, loading: false, error: false, signature: "" };
+  const state = { date: U.todayISO(), plan: null, loading: false, error: false, routeFrom: undefined, notBefore: null, request: 0 };
 
-  const signatureOf = (st) =>
-    st.tasks.filter((t) => !t.done).map((t) => t.id + t.date + t.start + t.duration).join("|");
-
-  function load(main, force) {
-    const st = store.get();
-    const signature = signatureOf(st);
-    if (!force && state.plan && state.date === U.todayISO() && state.signature === signature) return;
+  function load(main) {
+    const request = ++state.request;
     state.loading = true;
     state.error = false;
     state.plan = null;
-    state.signature = signature;
     render(main);
-    POS.ai.planDay(state.date)
+    const options = state.notBefore != null && state.date === U.todayISO() ? { notBefore: state.notBefore } : {};
+    POS.ai.planDay(state.date, options)
       .then((plan) => {
-        if (state.date !== plan.date) return;
+        if (request !== state.request || state.date !== plan.date) return;
         state.plan = plan;
         state.loading = false;
         const live = document.getElementById("main");
         if (live && location.hash.startsWith("#/planner")) render(live);
       })
       .catch(() => {
+        if (request !== state.request) return;
         state.loading = false;
         state.error = true;
         const live = document.getElementById("main");
@@ -39,13 +35,13 @@
 
   function taskByBlock(id) { return store.task(id); }
 
-  function blockHTML(id, tone) {
+  function blockHTML(id) {
     const t = taskByBlock(id);
     if (!t || t.done) return "";
     const project = t.projectId ? store.project(t.projectId) : null;
     const sel = state.plan && state.plan.placed.find((p) => p.taskId === id);
     return `
-      <div class="planner-task ${project ? "tone-" + project.color : "tone-accent"}">
+      <div class="planner-task ${project ? "tone-" + project.color : "tone-accent"}${sel && !sel.kept ? " is-proposed" : ""}">
         <span class="mono planner-time">${sel ? U.fmtMin(sel.start) : "—"}</span>
         <label class="check">
           <input type="checkbox" data-act="toggle-task" data-id="${t.id}" aria-label="Complete ${esc(t.title)}" />
@@ -61,6 +57,7 @@
             </span>
           </span>
         </label>
+        <span class="${sel && !sel.kept ? "schedule-proposed-label" : "planner-confirmed-label"}">${sel && !sel.kept ? "Proposed" : "Scheduled"}</span>
         <button class="icon-btn icon-btn-sm" data-act="focus-task" data-id="${t.id}" aria-label="Start a focus session for ${esc(t.title)}" title="Focus">
           ${icon("play")}
         </button>
@@ -82,9 +79,7 @@
         <div class="planner-rows">
           ${rows.length
             ? rows.map((id) => blockHTML(id)).join("")
-            : `<div class="planner-empty">Nothing placed here. ${
-                key === "morning" ? "The morning is being protected." : "Space, not failure."
-              }</div>`}
+            : `<div class="planner-empty">This part of the day is open.</div>`}
         </div>
       </section>`;
   }
@@ -128,7 +123,7 @@
         <div>
           <strong>Why this shape</strong>
           <p>${esc(plan.explanation)}</p>
-          <p style="margin-top:6px;color:var(--ink-3)">The assistant reads deadlines first, then priority, then the size of each block. Fixed events are never touched. Nothing below is saved until you accept.</p>
+          <p style="margin-top:6px;color:var(--ink-3)">Proposed blocks are not saved. Approving them won’t move already scheduled tasks or events.</p>
         </div>
       </div>
 
@@ -165,10 +160,11 @@
     const st = store.get();
     const open = st.tasks.filter((t) => !t.done && t.date <= displayDate);
     const plan = state.plan;
-    const placedCount = plan ? plan.placed.filter((p) => {
+    const placed = plan ? plan.placed.filter((p) => {
       const t = store.task(p.taskId);
       return t && !t.done;
-    }).length : 0;
+    }) : [];
+    const proposedCount = placed.filter((p) => !p.kept).length;
 
     main.innerHTML = `
       <div class="page">
@@ -186,8 +182,8 @@
           <div class="page-actions">
             <a class="btn btn-ghost" href="#/tasks">${icon("tasks")} All tasks</a>
             <button class="btn" id="p-regenerate" ${state.loading ? "disabled" : ""}>${icon("rotate")} Regenerate</button>
-            <button class="btn btn-accent" id="p-accept" ${plan && placedCount && !state.loading ? "" : "disabled"}>
-              ${icon("check")} Accept plan
+            <button class="btn btn-accent" id="p-accept" ${proposedCount && !state.loading ? "" : "disabled"}>
+              ${icon("check")} Approve ${proposedCount ? U.plural(proposedCount, "placement") : "placements"}
             </button>
           </div>
         </header>
@@ -201,7 +197,7 @@
           <span class="mono" style="font-size:10.5px;color:var(--ink-3)">
             ${isToday ? "TODAY" : U.fmtDate(displayDate, "medium").toUpperCase()}
           </span>
-          <span class="planner-hint">A proposal, not a command. Edit anything.</span>
+          <span class="planner-hint">Scheduled work stays in place.</span>
         </div>
 
         <div class="split planner-layout">
@@ -218,7 +214,7 @@
                   <div><strong>The day could not be planned.</strong> Nothing changed. Try once more, or work from the task list.</div>
                 </div>
                 <button class="btn btn-sm" style="margin-top:12px" id="p-retry">${icon("rotate")} Try again</button>
-              </div></div>` : plan && placedCount ? planBodyHTML() : `
+               </div></div>` : plan && placed.length ? planBodyHTML() : `
               <div class="panel">${ui.emptyState(
                 open.length ? "Nothing placed yet" : "The day is clear",
                 open.length
@@ -260,26 +256,40 @@
     main.querySelector("#p-prev").addEventListener("click", () => {
       state.date = U.addDays(state.date, -1);
       state.plan = null;
-      load(main, true);
+      load(main);
     });
     main.querySelector("#p-next").addEventListener("click", () => {
       state.date = U.addDays(state.date, 1);
       state.plan = null;
-      load(main, true);
+      load(main);
     });
     main.querySelector("#p-today").addEventListener("click", () => {
       state.date = today;
       state.plan = null;
-      load(main, true);
+      load(main);
     });
-    main.querySelector("#p-regenerate").addEventListener("click", () => load(main, true));
-    main.querySelector("#p-retry")?.addEventListener("click", () => load(main, true));
+    main.querySelector("#p-regenerate").addEventListener("click", () => load(main));
+    main.querySelector("#p-retry")?.addEventListener("click", () => load(main));
     main.querySelector("#p-accept")?.addEventListener("click", accept);
     ui.bind(main, {
       "focus-task": (el) => { location.hash = "#/focus?task=" + el.dataset.id; },
     });
 
-    if (!state.plan && !state.loading && !state.error) load(main, true);
+    if (!state.plan && !state.loading && !state.error) load(main);
+  }
+
+  function renderRoute(main, params = {}) {
+    const from = /^\d{1,4}$/.test(params.from) && Number(params.from) < 1440 ? Number(params.from) : null;
+    if (from !== state.routeFrom) {
+      state.routeFrom = from;
+      if (from != null || state.notBefore != null) {
+        state.notBefore = from;
+        state.date = U.todayISO();
+        load(main);
+        return;
+      }
+    }
+    render(main);
   }
 
   async function accept() {
@@ -287,24 +297,24 @@
     if (!plan) return;
     const placed = plan.placed.filter((p) => {
       const t = store.task(p.taskId);
-      return t && !t.done;
+      return !p.kept && t && !t.done;
     });
     if (!placed.length) return;
     const ok = await ui.confirm({
-      title: "Accept this plan?",
-      body: `${placed.length} tasks will be placed on ${U.fmtDate(state.date, "long")} at the times shown. Tasks that were behind move into this day. You can still edit or move them afterwards.`,
-      confirmLabel: "Accept the plan",
+      title: "Approve these placements?",
+      body: `${U.plural(placed.length, "task")} will be placed on ${U.fmtDate(state.date, "long")} at the proposed times. Already scheduled tasks and events won’t change.`,
+      confirmLabel: "Approve placements",
     });
     if (!ok) return;
     placed.forEach((p) => store.actions.updateTask(p.taskId, { date: state.date, start: p.start }));
     state.plan = null;
-    ui.toast("Plan accepted. The day is yours.", {
+    ui.toast(`${U.plural(placed.length, "task")} scheduled.`, {
       action: { label: "Open calendar", onClick: () => { location.hash = "#/calendar"; } },
     });
     const main = document.getElementById("main");
-    if (main) load(main, true);
+    if (main) load(main);
   }
 
   POS.views = POS.views || {};
-  POS.views.planner = { render };
+  POS.views.planner = { render: renderRoute, destroy: () => { state.routeFrom = undefined; } };
 })();

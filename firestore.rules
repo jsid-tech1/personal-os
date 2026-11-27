@@ -1,8 +1,13 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+    function owner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Automatic workspace sync (optional; the app does not write here by default).
     match /users/{userId}/state/workspace {
-      function owner() { return request.auth != null && request.auth.uid == userId; }
       function valid() {
         return request.resource.data.keys().hasOnly(['schemaVersion', 'payload', 'revision', 'updatedAt'])
           && request.resource.data.schemaVersion == 1
@@ -11,22 +16,27 @@ service cloud.firestore {
           && request.resource.data.revision is int
           && request.resource.data.updatedAt == request.time;
       }
-      allow read: if owner();
-      allow create: if owner() && valid() && request.resource.data.revision == 1;
-      allow update: if owner() && valid() && request.resource.data.revision == resource.data.revision + 1;
+      allow read, delete: if owner(userId);
+      allow create: if owner(userId) && valid() && request.resource.data.revision == 1;
+      allow update: if owner(userId) && valid() && request.resource.data.revision == resource.data.revision + 1;
     }
+
+    // Manual cloud backup: one recovery snapshot per Google account.
     match /users/{userId}/backups/workspace {
-      function isOwner() {
-        return request.auth != null && request.auth.uid == userId;
+      function valid() {
+        return request.resource.data.keys().hasAll(['schemaVersion', 'payload', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['schemaVersion', 'payload', 'updatedAt'])
+          && request.resource.data.schemaVersion == 1
+          && request.resource.data.payload is string
+          && request.resource.data.payload.size() <= 900000
+          && request.resource.data.updatedAt == request.time;
       }
-      allow read, delete: if isOwner();
-      allow create, update: if isOwner()
-        && request.resource.data.keys().hasAll(['schemaVersion', 'payload', 'updatedAt'])
-        && request.resource.data.keys().hasOnly(['schemaVersion', 'payload', 'updatedAt'])
-        && request.resource.data.schemaVersion == 1
-        && request.resource.data.payload is string
-        && request.resource.data.payload.size() <= 900000
-        && request.resource.data.updatedAt == request.time;
+      allow read, delete: if owner(userId);
+      allow create, update: if owner(userId) && valid();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

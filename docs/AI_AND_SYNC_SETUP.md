@@ -15,13 +15,25 @@ The existing Firebase Google sign-in remains real. Account-local task plans, cal
 ## Local AI server
 
 1. `npm install` and `npm install --prefix functions`.
-2. Copy `.env.example` to `.env`. Set `OPENAI_API_KEY` and optionally `OPENAI_MODEL` (default `gpt-4.1-mini`).
-3. Provide Firebase Admin application-default credentials, or set `GOOGLE_APPLICATION_CREDENTIALS` to a service account JSON **outside this repository**. Never place a service account or AI key in `js/firebase-config.js`, browser storage, or a public directory.
-4. Restart `npm run dev` and open `http://localhost:8000`.
+2. Copy `.env.example` to `.env` if you do not already have one. Set `DEEPSEEK_API_KEY` and optionally `DEEPSEEK_MODEL` (default `deepseek-flash`). Do not overwrite existing secrets.
+3. Firebase Admin verifies Google sign-in tokens against `GCLOUD_PROJECT` (default `personal-os-12b89`). Token verification needs public signing certificates, not a service-account file. If you use Admin operations that require credentials, keep that JSON **outside this repository**. Never place a service account or AI key in `js/firebase-config.js`, browser storage, or a public directory.
+4. Restart `npm run dev` and open `http://127.0.0.1:8000`. Do not use a generic static file server: it cannot run the AI endpoint and may expose `.env`.
 
-The browser sends a Firebase ID token to same-origin `/api/plan`. The server verifies it with Firebase Admin before contacting OpenAI. Only the task description and daily capacity go to the AI provider. The response must match a strict schema and is validated again before deterministic scheduling. The user reviews, edits and explicitly approves before any task is saved.
+Open **Goal Breakdown**, describe the goal and context, choose the target date and daily capacity, leave **DeepSeek agent** selected, then choose **Draft the plan**. DeepSeek proposes named milestones and actionable tasks with minute estimates. Choose **On-device templates** for a local, non-AI alternative. Edit the draft, then **Approve & schedule** to save it.
 
-Missing credentials, provider errors, invalid output and insufficient calendar capacity produce visible messages. Manual creation stays available. Local verification uses mocked network boundaries; a paid live model call cannot be verified without a configured key.
+The browser sends a Firebase ID token to same-origin `/api/plan`. The server verifies it with Firebase Admin before contacting DeepSeek. Only the goal description/context and daily capacity go to the provider; existing tasks, calendar dates and the Firebase token do not. JSON-mode output is validated on the server before deterministic local scheduling, and edited dates/capacity are checked again at approval. Nothing is saved until the user explicitly approves. Signing out or switching accounts discards the draft.
+
+Missing keys, provider errors, invalid output and insufficient calendar capacity produce visible messages. On-device templates stay available; failures never silently substitute templates for AI output.
+
+### Run the agent directly
+
+With Node.js 22 or newer, this uses the same server-side agent and the key in `.env`, without Firebase sign-in or saving any tasks:
+
+```sh
+npm run agent -- "Build my design portfolio from three existing case studies" --capacity=120
+```
+
+It prints JSON containing the goal title and ordered steps, each with `title`, `duration` (minutes) and `milestone`. This makes a real, billable DeepSeek request. Run mock checks without spending credits using `node --test tests/api.test.cjs tests/goal-agent.test.cjs tests/planning.test.cjs`.
 
 ## Production Firebase deployment
 
@@ -29,7 +41,7 @@ Cloud Functions requires a Firebase project on the Blaze billing plan and an aut
 
 ```
 npx firebase-tools login
-npx firebase-tools functions:secrets:set OPENAI_API_KEY --project personal-os-12b89
+npx firebase-tools functions:secrets:set DEEPSEEK_API_KEY --project personal-os-12b89
 npm run deploy
 ```
 

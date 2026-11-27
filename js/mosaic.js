@@ -40,8 +40,76 @@
   function toggle(id) {
     POS.store.actions.toggleTask(id);
   }
+  function interactiveFlower(button) {
+    const art = button.querySelector(".mosaic-art");
+    art.setAttribute("aria-hidden", "true");
+    const tiles = [...art.children].flatMap((tile, i) => tile.classList.contains("tile-earned") ? [{ tile, x: i % 20 + .5, y: Math.floor(i / 20) + .5 }] : []);
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const animations = new Set();
+    let frame = 0, pointer = null;
+    function point(event) {
+      const rect = art.getBoundingClientRect();
+      return { x: (event.clientX - rect.left) / rect.width * 20, y: (event.clientY - rect.top) / rect.height * 20, unit: rect.width / 20 };
+    }
+    function resetPointer() {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      pointer = null;
+      tiles.forEach(({ tile }) => {
+        tile.style.removeProperty("--flower-x");
+        tile.style.removeProperty("--flower-y");
+      });
+    }
+    function stop() {
+      resetPointer();
+      animations.forEach(animation => animation.cancel());
+      animations.clear();
+    }
+    button.addEventListener("pointermove", event => {
+      if (event.pointerType === "touch" || reduced.matches) return;
+      pointer = point(event);
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const { x, y, unit } = pointer;
+        tiles.forEach(({ tile, x: tx, y: ty }) => {
+          const dx = tx - x, dy = ty - y, distance = Math.hypot(dx, dy);
+          const force = Math.max(0, 1 - distance / 3.5) ** 2 * Math.min(8, unit * .45);
+          tile.style.setProperty("--flower-x", `${dx / (distance || 1) * force}px`);
+          tile.style.setProperty("--flower-y", `${dy / (distance || 1) * force}px`);
+        });
+      });
+    });
+    button.addEventListener("pointerleave", resetPointer);
+    button.addEventListener("pointercancel", resetPointer);
+    button.addEventListener("blur", resetPointer);
+    button.addEventListener("click", event => {
+      stop();
+      const origin = event.detail ? point(event) : { x: 10, y: 6, unit: art.clientWidth / 20 };
+      tiles.forEach(({ tile, x, y }) => {
+        const dx = x - origin.x, dy = y - origin.y, distance = Math.hypot(dx, dy);
+        const travel = Math.min(14, origin.unit * .65);
+        const frames = reduced.matches
+          ? [{ opacity: 1 }, { opacity: .65, offset: .4 }, { opacity: 1 }]
+          : [{ transform: "none" }, { transform: `translate(${dx / (distance || 1) * travel}px, ${dy / (distance || 1) * travel}px) scale(.86)`, offset: .3 }, { transform: "none" }];
+        const animation = tile.animate(frames, {
+          duration: reduced.matches ? 200 : 620,
+          delay: reduced.matches ? 0 : Math.min(180, distance * 15),
+          easing: "cubic-bezier(.16, 1, .3, 1)"
+        });
+        animations.add(animation);
+        animation.onfinish = () => animations.delete(animation);
+      });
+    });
+    reduced.addEventListener("change", stop);
+    document.addEventListener("visibilitychange", () => { if (document.hidden) stop(); });
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(entries => { if (!entries[0].isIntersecting) stop(); }).observe(button);
+    }
+  }
   document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-mosaic-demo]").forEach(el => { el.innerHTML = html(0, "botanical", true); });
+    document.querySelectorAll("[data-flower-interactive]").forEach(interactiveFlower);
     let demoDone = 0;
     const demo = document.getElementById("mosaic-interactive");
     const button = document.getElementById("demo-complete");
@@ -55,5 +123,5 @@
       });
     }
   });
-  POS.mosaic = { html, records, current, toggle };
+  POS.mosaic = { cells, html, records, current, toggle };
 })();

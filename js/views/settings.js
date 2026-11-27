@@ -67,11 +67,8 @@
             <button class="btn btn-ghost" id="s-cloud-signout" ${disabled}>Sign out</button>` : `
             <button class="btn btn-primary" id="s-cloud-signin" ${disabled}>${icon("user")} Continue with Google</button>`}
         </div>
-        <p class="field-help">One manual recovery copy per Google account. Saving replaces it; restoring replaces your active workspace after confirmation. Automatic workspace sync is separate; its status is shown in Profile above. Signing out keeps the local copy.</p>
+        <p class="field-help">One manual recovery copy per Google account. Saving replaces it; restoring replaces this account’s workspace on this device after confirmation. Nothing is uploaded until you choose Save cloud backup. Signing out keeps the local copy.</p>
       </div>`;
-    const analytics = main.querySelector("#s-analytics-status");
-    if (analytics) analytics.textContent = s.analytics === "enabled" ? "Firebase Analytics is enabled for usage measurement." :
-      s.analytics === "loading" ? "Firebase Analytics is initializing." : "Firebase Analytics is unavailable in this browser or connection.";
     const bind = (id, action, success) => {
       const button = host.querySelector(id);
       if (!button) return;
@@ -148,7 +145,7 @@
               <div class="panel">
                 <div class="panel-body stack gap-4">
                   <div class="settings-profile">
-                    <span class="avatar avatar-lg" id="s-avatar">${esc(s.initials || "CS")}</span>
+                    <span class="avatar avatar-lg" id="s-avatar">${esc(s.initials || "OS")}</span>
                     <div class="grow">
                       <div class="field">
                         <label class="label" for="s-name">Name</label>
@@ -176,11 +173,6 @@
                     <button class="btn" id="s-profile-logout" type="button">Log out</button>
                   </div>
                 </div>
-              </div>
-              <div class="sync-panel">
-                <h3>Across your devices</h3><p data-sync-status role="status">${esc(POS.sync?.status().error || POS.sync?.status().text || "Connecting cloud storage…")}</p>
-                <div class="plan-actions"><button class="btn" id="s-sync-retry" type="button">Retry cloud sync</button><button class="btn" id="s-sync-local" type="button">Keep this device’s version</button><button class="btn" id="s-sync-remote" type="button">Load cloud version</button><a class="btn btn-ghost" href="#/mosaic">My mosaic archive</a></div>
-                <p class="field-help">Local changes save automatically. Cloud errors are shown here. Resolve a device conflict deliberately; export a backup before replacing either version.</p>
               </div>
             </section>
 
@@ -254,7 +246,7 @@
             <section class="settings-section" id="set-assistant">
               <div class="settings-head">
                 <h2>Assistant</h2>
-                <p>A local, deterministic demo. No model, no API key, no network request.</p>
+                <p>Planning runs on this device. Capture can optionally use DeepSeek for a conversation.</p>
               </div>
               <div class="panel">
                 <div class="panel-body stack gap-4">
@@ -284,7 +276,7 @@
                       </label>
                     </div>
                   </div>
-                  <p class="field-help">Model: none connected. Provider: device-local rules. To replace it, swap the functions in <span class="mono">js/ai.js</span>; the views do not know the difference.</p>
+                  <p class="field-help">DeepSeek is off by default. Enable it in Capture for the current conversation. No workspace details are shared unless you allow it there.</p>
                 </div>
               </div>
             </section>
@@ -292,7 +284,7 @@
             <section class="settings-section" id="set-connections">
               <div class="settings-head">
                 <h2>Cloud backup</h2>
-                <p>A separate recovery copy, alongside automatic workspace sync.</p>
+                <p>One manual recovery copy per Google account. Nothing uploads until you save.</p>
               </div>
               <div class="panel">
                 <div class="panel-body" id="s-cloud"></div>
@@ -327,8 +319,8 @@
                     </div>
                     <div class="data-cell">
                       <span class="stat-label">Persistence</span>
-                      <span class="mono data-num" style="font-size:15px">Local + cloud</span>
-                      <span class="data-note">Account-specific / cloud status above</span>
+                      <span class="mono data-num" style="font-size:15px">Local first</span>
+                      <span class="data-note">Cloud only when you save a backup</span>
                     </div>
                   </div>
                   <div class="divider"></div>
@@ -337,7 +329,7 @@
                     <button class="btn" id="s-import-2">${icon("upload")} Import a backup</button>
                     <button class="btn btn-danger" id="s-reset">${icon("trash")} Clear workspace</button>
                   </div>
-                  <p class="field-help" style="margin-top:12px">Import and clear replace the active workspace across synced devices. Export a file first if you need to keep a copy.</p>
+                  <p class="field-help" style="margin-top:12px">Import and clear replace this account’s workspace on this device. Cloud backups are kept. Export a file first if you need to keep a copy.</p>
                 </div>
               </div>
             </section>
@@ -345,19 +337,19 @@
             <section class="settings-section" id="set-privacy">
               <div class="settings-head">
                 <h2>Privacy & security</h2>
-                <p>Local work stays available offline. Google sign-in gives you a private cloud backup.</p>
+                <p>Your workspace stays in this browser, separated by Google account. Cloud backup and DeepSeek are optional.</p>
               </div>
               <div class="panel">
                 <div class="panel-body">
                   <dl class="def settings-def">
                     <dt>Where data lives</dt>
-                    <dd><span class="value">localStorage</span> on this device. Save cloud backup also stores a workspace snapshot in Cloud Firestore under your Google account.</dd>
+                    <dd><span class="value">localStorage</span> on this device, separated by Google account. Saving a cloud backup also stores one snapshot in Cloud Firestore under your account.</dd>
                     <dt>Who can read it</dt>
                     <dd>Anyone with access to this browser profile can read its local copy, including after sign-out. Published Firestore rules restrict cloud access to your signed-in account; Firebase project administrators also have administrative access.</dd>
                     <dt>Network use</dt>
-                    <dd>Firebase SDKs, Google sign-in and cloud backup use a network connection. Fonts and local planning remain available from the app's files. <span id="s-analytics-status"></span></dd>
+                    <dd>Google sign-in, cloud backup and DeepSeek use a network connection. On-device planning and your saved workspace keep working offline. No analytics.</dd>
                     <dt>AI processing</dt>
-                    <dd>Rule-based and local. No model provider is connected. Workspace text is sent to Firestore only when you save a cloud backup.</dd>
+                    <dd>Planning runs on this device. With DeepSeek on, submitted messages and recorded turns go to DeepSeek; the app doesn’t save audio. Workspace details require a separate opt-in. Workspace text reaches Firestore only when you save a cloud backup.</dd>
                     <dt>What removes it</dt>
                     <dd>Reset, importing or restoring a backup replaces the local workspace. Clearing browser site data removes the local copy. Cloud backups remain until replaced or deleted in Firebase Console.</dd>
                   </dl>
@@ -371,7 +363,7 @@
             </section>
 
             <p class="settings-foot mono">
-              PERSONAL OS · VERSION 1.0 · FIREBASE CLOUD BACKUP · NO MODEL CONNECTED · BUILT ${new Date().getFullYear()}
+              PERSONAL OS · VERSION 1.0 · GOOGLE SIGN-IN · OPTIONAL CLOUD BACKUP · BUILT ${new Date().getFullYear()}
             </p>
           </div>
         </div>
@@ -387,14 +379,6 @@
       if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
     }));
 
-    /* Account preferences and explicit cross-device conflict recovery. */
-    main.querySelector("#s-sync-retry").onclick = () => POS.sync.refresh();
-    const resolveSync = async choice => {
-      const accepted = await ui.confirm({ title: choice === "local" ? "Keep this device’s workspace?" : "Load the cloud workspace?", body: "This replaces the other version, not a merge. Export a backup first if you need both copies.", confirmLabel: choice === "local" ? "Keep local version" : "Load cloud version" });
-      if (accepted) POS.sync.refresh(choice);
-    };
-    main.querySelector("#s-sync-local").onclick = () => resolveSync("local");
-    main.querySelector("#s-sync-remote").onclick = () => resolveSync("remote");
     const availability = document.createElement("fieldset");
     availability.className = "day-picker settings-days";
     availability.innerHTML = `<legend>Working days</legend>${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d, i) => `<label><input type="checkbox" value="${i}" ${(s.workDays || [1, 2, 3, 4, 5]).includes(i) ? "checked" : ""}><span>${d}</span></label>`).join("")}`;
@@ -504,7 +488,7 @@
     const reset = async () => {
       const ok = await ui.confirm({
         title: "Clear your workspace?",
-        body: "This removes your tasks, projects, mosaic archive and focus sessions from the active workspace, including synced devices. Manual cloud backups are kept. Export a file first; this cannot be undone here.",
+        body: "This removes your tasks, projects, mosaic archive and focus sessions from this account’s workspace on this device. Cloud backups are kept. Export a file first; this cannot be undone here.",
         confirmLabel: "Clear workspace",
         danger: true,
       });

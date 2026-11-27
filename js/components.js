@@ -207,7 +207,15 @@
     const el = wrap.querySelector(".sheet");
     const previously = document.activeElement;
     let closed = false;
-    const onKey = (e) => { if (e.key === "Escape") close(); };
+    const onKey = (e) => {
+      if (e.key === "Escape" && root.lastElementChild === wrap) close();
+      if (e.key !== "Tab" || root.lastElementChild !== wrap) return;
+      const controls = Array.from(el.querySelectorAll("button, a[href], input, select, textarea, [tabindex='0']"))
+        .filter((control) => !control.disabled && control.getClientRects().length);
+      const first = controls[0], last = controls[controls.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
     function close() {
       if (closed) return;
       closed = true;
@@ -217,7 +225,7 @@
       if (previously && previously.focus) previously.focus();
       if (opts.onClose) opts.onClose();
     }
-    wrap._close = close;
+    wrap.__posClose = close;
     wrap.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", close));
     document.addEventListener("keydown", onKey);
     setTimeout(() => {
@@ -474,30 +482,7 @@
      Capture
      ========================================================= */
 
-  function captureBody() {
-    return `
-      <div class="stack gap-4">
-        <div class="field">
-          <label class="sr-only" for="c-text">What's on your mind?</label>
-          <textarea id="c-text" class="textarea" style="min-height:132px;border:0;background:transparent;padding:0;font-size:15px;line-height:1.6"
-            placeholder="What's on your mind?" autofocus></textarea>
-        </div>
-        <div class="spread" style="border-top:1px solid var(--line-soft);padding-top:12px">
-          <div class="row gap-1">
-            <button class="icon-btn" id="c-mic" aria-label="Voice input" title="Voice input">${icon("mic")}</button>
-            <button class="icon-btn" id="c-file" aria-label="Attach a file" title="Attach a file">${icon("paperclip")}</button>
-            <input type="file" id="c-file-input" multiple hidden />
-            <span class="mono" id="c-count" style="font-size:10.5px;color:var(--ink-4);margin-left:6px">0 words</span>
-          </div>
-          <span class="mono" style="font-size:10px;color:var(--ink-4)">Ctrl ↵ to process</span>
-        </div>
-        <div id="c-files" class="stack gap-1"></div>
-        <div id="c-review"></div>
-      </div>`;
-  }
-
-  function renderReview(root, result, onCommit) {
-    const target = root.querySelector("#c-review");
+  function renderReview(target, result, onCommit) {
     const items = result.items;
     target.innerHTML = `
       <div class="stack gap-3" style="border-top:1px solid var(--line);padding-top:16px">
@@ -506,7 +491,7 @@
             <h3 style="font-size:12px;font-weight:600">Review before saving</h3>
             <p style="font-size:11.5px;color:var(--ink-3);margin-top:2px">${esc(result.summary)}</p>
           </div>
-          <span class="tag tag-accent tag-mono">LOCAL AI</span>
+          <span class="tag tag-outline">${esc(result.provider || "On device")}</span>
         </div>
         ${result.question ? `<div class="note">${icon("sparkles")}<div>${esc(result.question)}</div></div>` : ""}
         <div class="panel" style="box-shadow:none">
@@ -517,7 +502,6 @@
               <div class="grow stack gap-1">
                 <div class="row gap-2 wrap">
                   <span class="tag tag-mono ${it.type === "goal" ? "tag-accent" : it.type === "note" ? "tag-outline" : ""}" style="text-transform:uppercase">${it.type}</span>
-                  <span class="mono" style="font-size:10px;color:var(--ink-4)">${Math.round(it.confidence * 100)}% sure</span>
                 </div>
                 <input class="input-inline" data-title="${i}" value="${esc(it.title)}" aria-label="Edit title" style="font-size:13.5px;width:100%" />
                 <div class="row gap-2 wrap" style="font-size:11px;color:var(--ink-3)">
@@ -530,10 +514,10 @@
             </div>`).join("")}
         </div>
         <div class="row gap-2">
-          <button class="btn btn-accent grow" id="c-commit" ${items.some((i) => i.selected) ? "" : "disabled"}>
-            ${icon("check")} Add <span id="c-count-sel">${items.filter((i) => i.selected).length}</span> selected
+          <button class="btn btn-accent grow" data-draft-commit ${items.some((i) => i.selected) ? "" : "disabled"}>
+            ${icon("check")} Add <span data-draft-count>${items.filter((i) => i.selected).length}</span> selected
           </button>
-          <button class="btn" id="c-discard">Discard</button>
+          <button class="btn" data-draft-discard>Discard draft</button>
         </div>
         <p style="font-size:10.5px;color:var(--ink-4);line-height:1.5">
           Goals are saved as project shells. Open Goal Breakdown to draft their milestones —
@@ -542,10 +526,10 @@
       </div>`;
 
     const update = () => {
-      const n = target.querySelectorAll("[data-sel]:checked").length;
-      const btn = target.querySelector("#c-commit");
+      const n = items.filter((item) => item.selected && item.title.trim()).length;
+      const btn = target.querySelector("[data-draft-commit]");
       btn.disabled = n === 0;
-      target.querySelector("#c-count-sel").textContent = n;
+      target.querySelector("[data-draft-count]").textContent = n;
     };
     target.querySelectorAll("[data-sel]").forEach((cb) => {
       cb.addEventListener("change", () => {
@@ -555,17 +539,18 @@
       });
     });
     target.querySelectorAll("[data-title]").forEach((inp) => {
-      inp.addEventListener("input", () => { items[Number(inp.dataset.title)].title = inp.value; });
+      inp.addEventListener("input", () => { items[Number(inp.dataset.title)].title = inp.value; update(); });
     });
     target.querySelectorAll("[data-date]").forEach((inp) => {
       inp.addEventListener("change", () => { items[Number(inp.dataset.date)].date = inp.value; });
     });
-    target.querySelector("#c-discard").addEventListener("click", () => renderEmpty(target));
-    target.querySelector("#c-commit").addEventListener("click", () => onCommit(items.filter((i) => i.selected)));
-  }
-
-  function renderEmpty(target) {
-    target.innerHTML = "";
+    target.querySelector("[data-draft-discard]").addEventListener("click", () => {
+      target.innerHTML = '<p class="conversation-status" tabindex="-1">Draft discarded. Nothing was saved.</p>';
+      target.firstElementChild.focus();
+    });
+    target.querySelector("[data-draft-commit]").addEventListener("click", () => {
+      onCommit(items.filter((item) => item.selected && item.title.trim()));
+    });
   }
 
   function commitItems(items) {
@@ -611,159 +596,561 @@
     }
   }
 
-  function openCapture(prefill = "") {
-    const s = sheet({
-      title: "Capture",
-      sub: "One box. No forms. The assistant sorts it after you finish.",
-      width: 520,
-      body: captureBody(),
-      onMount: (el, close) => {
-        const text = el.querySelector("#c-text");
-        const review = el.querySelector("#c-review");
-        const count = el.querySelector("#c-count");
-        const files = [];
-        text.value = prefill;
-        const sync = () => { count.textContent = `${U.wordCount(text.value)} words`; };
-        sync();
-        text.addEventListener("input", sync);
-
-        const fileInput = el.querySelector("#c-file-input");
-        el.querySelector("#c-file").addEventListener("click", () => fileInput.click());
-        fileInput.addEventListener("change", () => {
-          Array.from(fileInput.files || []).forEach((f) => files.push(f.name));
-          el.querySelector("#c-files").innerHTML = files.map((f) => `
-            <div class="row gap-2" style="font-size:11.5px;color:var(--ink-2)">
-              ${icon("paperclip", "ico-sm")}<span class="grow truncate">${esc(f)}</span>
-              <span class="mono" style="font-size:10px;color:var(--ink-4)">attached</span>
-            </div>`).join("");
-        });
-
-        const mic = el.querySelector("#c-mic");
-        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SR) {
-          mic.setAttribute("aria-disabled", "true");
-          mic.title = "Voice input is not available in this browser";
-          mic.style.opacity = "0.4";
-        } else {
-          mic.addEventListener("click", () => {
-            const rec = new SR();
-            rec.lang = navigator.language || "en-US";
-            rec.interimResults = true;
-            rec.onresult = (ev) => {
-              const said = Array.from(ev.results).map((r) => r[0].transcript).join(" ");
-              text.value = said;
-              sync();
-            };
-            rec.onerror = () => toast("Voice input stopped. You can type instead.", { kind: "danger" });
-            rec.start();
-            toast("Listening. Speak, then press the mic again to stop.");
-            mic.dataset.listening = "1";
-            rec.onend = () => { delete mic.dataset.listening; };
-          });
-        }
-
-        const process = async () => {
-          const value = text.value.trim();
-          if (!value) { toast("Write something first.", { kind: "danger" }); return; }
-          review.innerHTML = skeletonRows(3);
-          try {
-            const result = await POS.ai.parseCapture(value);
-            renderReview(el, result, (picked) => {
-              commitItems(picked, files);
-              close();
-            });
-            review.scrollIntoView({ block: "nearest", behavior: "smooth" });
-          } catch (err) {
-            review.innerHTML = `<div class="note note-warning">${icon("warning")}<div>Could not read that. Try again, or add the task manually.</div></div>`;
-          }
-        };
-
-        const footer = document.createElement("div");
-        footer.className = "row gap-2";
-        footer.style.marginTop = "14px";
-        footer.innerHTML = `
-          <button class="btn btn-accent grow" id="c-process">${icon("sparkles")} Process with the assistant</button>
-          <button class="btn" id="c-close">Cancel</button>`;
-        el.querySelector(".sheet-body").appendChild(footer);
-        footer.querySelector("#c-close").addEventListener("click", close);
-        footer.querySelector("#c-process").addEventListener("click", process);
-        text.addEventListener("keydown", (e) => {
-          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); process(); }
-        });
-      },
-    });
-    return s;
+  function openCapture(prefill = "", { start = false } = {}) {
+    return openConversation({ capture: true, prefill, start: start ? prefill : "" });
   }
 
-  /* =========================================================
-     Assistant drawer
-     ========================================================= */
-
   function openAssistant(seedQuestion) {
-    const s = sheet({
-      title: "Assistant",
-      sub: "Local demo · rule-based · no model connected",
-      width: 440,
+    return openConversation({ start: seedQuestion });
+  }
+
+  function openConversation({ capture = false, prefill = "", start = "" } = {}) {
+    let stopVoice = () => {};
+    let stopSpeech = () => {};
+    let closeCloud = () => {};
+    return sheet({
+      title: capture ? "Capture" : "Conversation",
+      sub: "On-device assistant",
+      width: 536,
       body: `
-        <div class="stack gap-4" id="a-log">
-          <div class="note note-quiet">${icon("sparkles")}
-            <div>I work from your own data, on this device. I propose; you decide.
-            Try “plan my day” or “what is behind?”</div>
+        <div class="conversation-access">
+          <div class="conversation-mode">
+            <button type="button" class="btn btn-quiet" data-cloud-mode aria-expanded="false" aria-controls="conversation-consent">Use DeepSeek</button>
+            <button type="button" class="btn btn-ghost" data-cloud-stop hidden>Stop reply</button>
           </div>
-        </div>
-        <div class="row gap-2 wrap" id="a-suggest" style="margin-top:14px">
-          ${["Plan my day", "What's behind?", "What should I focus on?", "Summarise my week"].map((q) =>
-            `<button class="chip" data-q="${esc(q)}">${esc(q)}</button>`).join("")}
-        </div>
-        <div style="position:sticky;bottom:-20px;background:var(--surface);padding-top:12px;margin-top:14px">
-          <div class="search-field" style="border:1px solid var(--line);border-radius:var(--r-sm);padding:0 10px;height:40px">
-            <input id="a-input" placeholder="Ask about your day, week or plan" aria-label="Ask the assistant" />
-            <button class="icon-btn" id="a-send" aria-label="Send">${icon("arrow-right")}</button>
+          <div class="conversation-consent" id="conversation-consent" hidden>
+            <p>DeepSeek receives messages you send and voice clips you finish recording. Earlier local messages and your workspace aren’t shared automatically. Personal OS doesn’t save audio.</p>
+            <button type="button" class="btn btn-accent" data-cloud-enable>Turn on DeepSeek</button>
           </div>
-        </div>`,
+          <label class="check conversation-share" hidden>
+            <input type="checkbox" data-cloud-share />
+            <span>Share matching workspace items <small>Titles and schedule details only. No note contents.</small></span>
+          </label>
+        </div>
+        <div class="conversation-thread">
+          <div class="conversation-intro">
+            <h3>${capture ? "What’s on your mind?" : "What would you like to work through?"}</h3>
+            <p>${capture ? "Write a thought or ask a question. Send it to start a conversation." : "Ask about your tasks, notes, projects or plans. No changes are saved without your say."}</p>
+            <div class="row gap-2 wrap">
+              ${["Plan my day", "What’s behind?", "What should I focus on?"].map((q) =>
+                `<button class="btn btn-quiet" data-question="${esc(q)}">${esc(q)}</button>`).join("")}
+            </div>
+          </div>
+          <div class="conversation-log" role="log" aria-label="Conversation messages"></div>
+        </div>
+        <form class="conversation-compose">
+          <label class="sr-only" for="conversation-input">Message</label>
+          <textarea class="textarea" id="conversation-input" placeholder="Write or speak a thought" rows="2" maxlength="10000" enterkeyhint="send" autofocus></textarea>
+          <input type="file" accept=".txt,.md,.csv,.json,text/plain,text/markdown,text/csv,application/json" data-text-file hidden />
+          <div class="conversation-controls">
+            <button type="button" class="icon-btn" data-voice aria-label="Dictate on this device" aria-pressed="false" title="Dictate on this device">${icon("mic")}</button>
+            <button type="button" class="icon-btn" data-attach aria-label="Insert text from a file" title="Insert text from a file">${icon("paperclip")}</button>
+            <button type="button" class="btn btn-ghost conversation-read" aria-pressed="false">Read replies</button>
+            <button class="btn btn-accent conversation-send" type="submit">${icon("arrow-right")} Send</button>
+          </div>
+          <p class="conversation-status" role="status"></p>
+        </form>`,
+      onClose: () => { stopVoice(); stopSpeech(); closeCloud(); },
       onMount: (el, close) => {
-        const log = el.querySelector("#a-log");
-        const input = el.querySelector("#a-input");
-        const add = (html) => {
-          const node = document.createElement("div");
-          node.innerHTML = html;
-          const child = node.firstElementChild;
-          log.appendChild(child);
-          log.parentElement.scrollTop = log.parentElement.scrollHeight;
+        el.classList.add("conversation-sheet");
+        const thread = el.querySelector(".conversation-thread");
+        const log = el.querySelector(".conversation-log");
+        const intro = el.querySelector(".conversation-intro");
+        const form = el.querySelector("form");
+        const input = form.querySelector("textarea");
+        const send = form.querySelector(".conversation-send");
+        const status = form.querySelector(".conversation-status");
+        const read = form.querySelector(".conversation-read");
+        const mic = form.querySelector("[data-voice]");
+        const file = form.querySelector("[data-text-file]");
+        const cloud = POS.deepseek;
+        const mode = el.querySelector("[data-cloud-mode]");
+        const consent = el.querySelector("#conversation-consent");
+        const enable = consent.querySelector("button");
+        const share = el.querySelector("[data-cloud-share]");
+        const cloudStop = el.querySelector("[data-cloud-stop]");
+        let processing = false;
+        let first = true;
+        let recognition = null;
+        let checkingVoice = false;
+        let readReplies = false;
+        let activeUtterance = null;
+        let topic = null;
+        let cloudMode = false;
+        let cloudTurns = [];
+        const cloudDrafts = new Set();
+        let cloudRequest = null;
+        let voiceRequest = null;
+        let recording = null;
+        let recordTimer;
+        let output = null;
+        input.value = prefill;
+
+        const scroll = () => { thread.scrollTop = thread.scrollHeight; };
+        const sync = () => {
+          send.disabled = processing || Boolean(voiceRequest) || !input.value.trim();
+          cloudStop.hidden = !cloudMode || !cloudRequest;
         };
-        const ask = async (q) => {
-          if (!q.trim()) return;
-          add(`<div class="row" style="justify-content:flex-end">
-                 <div style="background:var(--ink);color:var(--on-accent);padding:9px 12px;border-radius:12px 12px 3px 12px;font-size:12.5px;max-width:85%">${esc(q)}</div>
-               </div>`);
-          const pending = document.createElement("div");
-          pending.innerHTML = `<div class="row gap-2" style="color:var(--ink-3);font-size:12px">${icon("sparkles")}<span class="spinner"></span> Thinking from your data…</div>`;
-          log.appendChild(pending);
+        const append = (html) => {
+          const row = document.createElement("div");
+          row.innerHTML = html;
+          const item = row.firstElementChild;
+          log.appendChild(item);
+          scroll();
+          return item;
+        };
+        const listening = (on) => {
+          mic.setAttribute("aria-pressed", String(on));
+          mic.setAttribute("aria-label", cloudMode ? on ? "Send voice turn" : "Start voice turn" : on ? "Stop dictation" : "Dictate on this device");
+          mic.title = mic.getAttribute("aria-label");
+        };
+        stopVoice = () => {
+          if (!recognition) return;
+          const rec = recognition;
+          recognition = null;
+          rec.onresult = rec.onend = rec.onerror = null;
+          rec.abort();
+          listening(false);
+          status.textContent = "";
+        };
+        const synth = window.speechSynthesis;
+        const findVoice = () => {
+          const voices = synth?.getVoices().filter((voice) => voice.localService) || [];
+          const language = (navigator.language || "en").split("-")[0];
+          return voices.find((voice) => voice.lang.startsWith(language)) || voices[0];
+        };
+        stopSpeech = () => {
+          if (activeUtterance) synth.cancel();
+          activeUtterance = null;
+        };
+        const stopRecording = () => {
+          clearTimeout(recordTimer);
+          voiceRequest?.abort();
+          voiceRequest = null;
+          recording?.close();
+          recording = null;
+          listening(false);
+        };
+        closeCloud = () => {
+          cloudRequest?.abort();
+          cloudDrafts.forEach((request) => request.abort());
+          stopRecording();
+          output?.close();
+          output = null;
+        };
+        const changeMode = (online) => {
+          stopVoice();
+          stopSpeech();
+          closeCloud();
+          cloudMode = online;
+          cloudTurns = [];
+          share.checked = false;
+          share.parentElement.hidden = !online;
+          consent.hidden = true;
+          if (online) mode.removeAttribute("aria-expanded");
+          else mode.setAttribute("aria-expanded", "false");
+          mode.textContent = online ? "Switch to on-device" : "Use DeepSeek";
+          el.querySelector(".sheet-head .meta-line").textContent = online ? "DeepSeek conversation" : "On-device assistant";
+          readReplies = false;
+          read.setAttribute("aria-pressed", "false");
+          listening(false);
+          sync();
+        };
+        mode.addEventListener("click", () => {
+          if (cloudMode) return changeMode(false);
+          consent.hidden = !consent.hidden;
+          mode.setAttribute("aria-expanded", String(!consent.hidden));
+        });
+        enable.addEventListener("click", async () => {
+          if (enable.disabled) return;
+          enable.disabled = true;
+          status.textContent = "Checking the server…";
+          const available = await cloud.status();
+          enable.disabled = false;
+          if (!el.isConnected || consent.hidden) { status.textContent = ""; return; }
+          if (!available) {
+            status.textContent = "DeepSeek isn’t configured here. Start the Personal OS server with a DeepSeek key or keep using on-device mode.";
+            return;
+          }
+          changeMode(true);
+          status.textContent = "DeepSeek is on for this conversation.";
+          input.focus();
+        });
+        share.addEventListener("change", () => {
+          if (!share.checked) {
+            cloudTurns = [];
+            cloudRequest?.abort();
+            output?.stop();
+            status.textContent = "Workspace sharing is off. DeepSeek will start with fresh context.";
+          } else {
+            status.textContent = "Matching workspace titles and schedule details may be sent with your next message.";
+          }
+        });
+        cloudStop.addEventListener("click", () => {
+          cloudRequest?.abort();
+          output?.stop();
+        });
+        const warmOutput = () => {
           try {
-            const r = await POS.ai.assistantReply(q);
-            pending.remove();
-            add(`
-              <div class="panel" style="box-shadow:none">
-                <div class="panel-body" style="padding:14px">
-                  <div class="row gap-2" style="margin-bottom:6px">${icon("sparkles")}<strong style="font-size:12px">${esc(r.title)}</strong></div>
-                  <p style="font-size:12.5px;color:var(--ink-2);line-height:1.6">${esc(r.text)}</p>
-                  ${r.bullets && r.bullets.length ? `<ul class="stack gap-1" style="margin-top:8px">${r.bullets.map((b) => `<li style="font-size:12px;color:var(--ink-3)">· ${esc(b)}</li>`).join("")}</ul>` : ""}
-                  ${r.actions && r.actions.length ? `<div class="row gap-2 wrap" style="margin-top:10px">${r.actions.map((a) => `<a class="btn btn-sm" href="${a.href}" data-close>${esc(a.label)} ${icon("arrow-right")}</a>`).join("")}</div>` : ""}
-                </div>
-              </div>`);
-            log.querySelectorAll("a[data-close]").forEach((a) => a.addEventListener("click", close));
+            output ||= cloud.player(() => {
+              if (el.isConnected) status.textContent = "Couldn’t play the DeepSeek voice. The text reply is still available.";
+            });
+            output.resume().catch(() => {
+              if (el.isConnected) status.textContent = "Audio playback was blocked. You can still read the reply.";
+            });
+            return true;
           } catch (err) {
-            pending.remove();
-            add(`<div class="note note-warning">${icon("warning")}<div>That did not work. Try a simpler question.</div></div>`);
+            status.textContent = err.message;
+            return false;
           }
         };
-        input.addEventListener("keydown", (e) => { if (e.key === "Enter") { ask(input.value); input.value = ""; } });
-        el.querySelector("#a-send").addEventListener("click", () => { ask(input.value); input.value = ""; });
-        el.querySelectorAll("[data-q]").forEach((b) => b.addEventListener("click", () => ask(b.dataset.q)));
-        if (seedQuestion) ask(seedQuestion);
+        const speak = (reply) => {
+          const voice = readReplies && findVoice();
+          if (cloudMode || !voice || recognition || !el.isConnected) return;
+          stopSpeech();
+          const spoken = new SpeechSynthesisUtterance(reply);
+          activeUtterance = spoken;
+          spoken.voice = voice;
+          spoken.onend = spoken.onerror = () => {
+            if (activeUtterance === spoken) activeUtterance = null;
+          };
+          synth.speak(spoken);
+        };
+        read.addEventListener("click", () => {
+          if (cloudMode) {
+            if (!readReplies && !warmOutput()) return;
+            readReplies = !readReplies;
+            read.setAttribute("aria-pressed", String(readReplies));
+            if (!readReplies) output?.stop();
+            status.textContent = readReplies ? "DeepSeek replies will play aloud." : "Spoken replies are off.";
+            return;
+          }
+          if (!readReplies && (!window.SpeechSynthesisUtterance || !findVoice())) {
+            status.textContent = "No on-device voice is available. Replies will stay in text.";
+            return;
+          }
+          readReplies = !readReplies;
+          read.setAttribute("aria-pressed", String(readReplies));
+          if (!readReplies) stopSpeech();
+          status.textContent = readReplies ? "Replies will be read aloud on this device." : "Read aloud is off.";
+        });
+        const finishRecording = async () => {
+          if (!recording || !voiceRequest) return;
+          clearTimeout(recordTimer);
+          const req = voiceRequest;
+          const wav = recording.finish();
+          recording = null;
+          listening(false);
+          if (wav.size < 5000) {
+            voiceRequest = null;
+            status.textContent = "That clip was too short. Try another voice turn.";
+            sync();
+            return;
+          }
+          status.textContent = "Transcribing your voice…";
+          try {
+            const transcript = await cloud.transcribe(wav, req.signal);
+            if (req.signal.aborted || !el.isConnected) return;
+            voiceRequest = null;
+            if (!transcript) {
+              status.textContent = "No speech was detected. Try again or type a message.";
+              return;
+            }
+            if (input.value.trim() || processing) {
+              const message = [input.value, transcript].filter(Boolean).join("\n");
+              input.value = message.slice(0, input.maxLength);
+              status.textContent = "Transcript added to your message. Review it before sending.";
+              input.focus();
+            } else {
+              await ask(transcript, true);
+            }
+          } catch (err) {
+            if (!req.signal.aborted) status.textContent = err.message || "Couldn’t transcribe that clip. You can still type.";
+          } finally {
+            if (voiceRequest === req) voiceRequest = null;
+            sync();
+          }
+        };
+        const cloudMic = async () => {
+          if (recording) return finishRecording();
+          if (voiceRequest) {
+            stopRecording();
+            status.textContent = "Voice turn cancelled.";
+            sync();
+            return;
+          }
+          cloudRequest?.abort();
+          output?.stop();
+          if (!output && warmOutput()) {
+            readReplies = true;
+            read.setAttribute("aria-pressed", "true");
+          } else if (readReplies) warmOutput();
+          const req = new AbortController();
+          voiceRequest = req;
+          status.textContent = "Opening the microphone…";
+          sync();
+          try {
+            const active = await cloud.record(req.signal);
+            if (req.signal.aborted || !el.isConnected) { active.close(); return; }
+            recording = active;
+            listening(true);
+            status.textContent = "Recording. Tap the microphone again to send this turn to DeepSeek.";
+            recordTimer = setTimeout(() => {
+              stopRecording();
+              status.textContent = "The 45-second limit was reached. Nothing was sent. Try a shorter turn.";
+              sync();
+            }, 45000);
+          } catch (err) {
+            if (voiceRequest === req) voiceRequest = null;
+            if (!req.signal.aborted) status.textContent = err.message || "Couldn’t start the microphone.";
+            sync();
+          }
+        };
+        mic.addEventListener("click", async () => {
+          if (cloudMode) return cloudMic();
+          if (recognition) { recognition.stop(); return; }
+          if (checkingVoice) return;
+          const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+          if (!Speech?.available || !("processLocally" in Speech.prototype)) {
+            status.textContent = "This browser doesn’t support on-device dictation. You can still type.";
+            return;
+          }
+          const lang = navigator.language || "en-US";
+          checkingVoice = true;
+          let reportedError = false;
+          try {
+            if (await Speech.available({ langs: [lang], processLocally: true }) !== "available") {
+              status.textContent = "On-device dictation needs an installed speech language pack. You can still type.";
+              return;
+            }
+            if (!el.isConnected) return;
+            stopSpeech();
+            const rec = new Speech();
+            rec.processLocally = true;
+            rec.lang = lang;
+            rec.interimResults = true;
+            const prefix = input.value.trimEnd();
+            rec.onresult = (event) => {
+              const transcript = Array.from(event.results, (result) => result[0].transcript).join(" ");
+              input.value = [prefix, transcript].filter(Boolean).join(" ").slice(0, input.maxLength);
+              sync();
+            };
+            rec.onerror = () => {
+              reportedError = true;
+              status.textContent = "Dictation stopped. Check microphone permission or type your message.";
+            };
+            rec.onend = () => {
+              recognition = null;
+              listening(false);
+              if (!reportedError) status.textContent = "Review what you said, then send it.";
+            };
+            recognition = rec;
+            rec.start();
+            listening(true);
+            status.textContent = "Listening on this device. Press the microphone again to stop.";
+          } catch {
+            recognition = null;
+            listening(false);
+            status.textContent = "Couldn’t start on-device dictation. You can still type.";
+          } finally {
+            checkingVoice = false;
+          }
+        });
+        form.querySelector("[data-attach]").addEventListener("click", () => file.click());
+        file.addEventListener("change", async () => {
+          const chosen = file.files[0];
+          file.value = "";
+          if (!chosen) return;
+          const original = input.value;
+          try {
+            if (!/\.(txt|md|csv|json)$/i.test(chosen.name) || chosen.size > 40000) {
+              status.textContent = "Choose a text file that fits in a single message.";
+              return;
+            }
+            const text = (await chosen.text()).trim();
+            if (!el.isConnected) return;
+            const message = [input.value, text].filter(Boolean).join("\n\n");
+            if (!text || message.length > input.maxLength || input.value !== original) {
+              status.textContent = "Text wasn’t inserted. Check that it fits and try again.";
+              return;
+            }
+            input.value = message;
+            status.textContent = "Text added to your message. It hasn’t been sent.";
+            sync();
+            input.focus();
+          } catch {
+            status.textContent = "Couldn’t read that file.";
+          }
+        });
+
+        const makeDraft = async (message, slot, remote = false) => {
+          if (slot.dataset.busy) return;
+          slot.dataset.busy = "1";
+          slot.innerHTML = '<p class="conversation-status">Drafting tasks and notes…</p>';
+          const request = remote ? new AbortController() : null;
+          if (request) cloudDrafts.add(request);
+          try {
+            const result = remote ? await cloud.draft(message, request.signal) : await POS.ai.parseCapture(message);
+            if (!el.isConnected) return;
+            if (!result.items.length) {
+              slot.querySelector("p").textContent = result.summary;
+              return;
+            }
+            renderReview(slot, result, (picked) => {
+              commitItems(picked);
+              slot.innerHTML = '<p class="conversation-status" tabindex="-1">Items saved. You can keep talking.</p>';
+              slot.firstElementChild.focus();
+            });
+            if (!remote) speak(result.question || result.summary);
+          } catch {
+            if (!el.isConnected) return;
+            slot.querySelector("p").textContent = request?.signal.aborted
+              ? "Draft cancelled. Nothing was saved."
+              : "Couldn’t make a draft. Nothing was saved.";
+            const retry = document.createElement("button");
+            retry.type = "button";
+            retry.className = "btn btn-quiet";
+            retry.textContent = "Draft on this device";
+            retry.addEventListener("click", () => makeDraft(message, slot), { once: true });
+            slot.appendChild(retry);
+          } finally {
+            delete slot.dataset.busy;
+            if (request) cloudDrafts.delete(request);
+          }
+        };
+        const offerDraft = (message, turn, answer, online) => {
+          const draft = document.createElement("button");
+          draft.type = "button";
+          draft.className = "btn btn-ghost conversation-draft-action";
+          draft.textContent = "Draft tasks or notes";
+          draft.addEventListener("click", () => {
+            const slot = document.createElement("div");
+            slot.className = "conversation-draft";
+            answer.after(slot);
+            slot.tabIndex = -1;
+            makeDraft(message, slot, online && cloudMode);
+            draft.remove();
+            slot.focus();
+          });
+          turn.appendChild(draft);
+        };
+        const sayWhileStreaming = () => {
+          let leftover = "";
+          return (delta = "", done = false) => {
+            if (!readReplies || !output) { leftover = ""; return; }
+            leftover += delta;
+            while (leftover) {
+              const pause = leftover.search(/[.!?。！？，；]\s+|[。！？\n]/);
+              const breakAt = pause >= 24 ? pause + 1 : -1;
+              const word = leftover.lastIndexOf(" ", 170);
+              const length = breakAt > 0 && breakAt <= 200 ? breakAt
+                : leftover.length >= 200 ? word > 40 ? word : 170
+                : done ? leftover.length : 0;
+              if (!length) break;
+              output.speak(leftover.slice(0, length).trim());
+              leftover = leftover.slice(length).trimStart();
+            }
+          };
+        };
+        const cloudAsk = async (message, answer) => {
+          const request = new AbortController();
+          cloudRequest = request;
+          sync();
+          const reply = answer.querySelector(".conversation-stream");
+          const queueAudio = sayWhileStreaming();
+          try {
+            const context = share.checked ? cloud.workspace(message) : undefined;
+            const turns = cloud.history(cloudTurns, message);
+            const response = await cloud.chat(turns, {
+              signal: request.signal, context, voice: readReplies,
+              onText: (delta, full) => {
+                const nearBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 70;
+                reply.textContent = full;
+                queueAudio(delta);
+                if (nearBottom) scroll();
+              },
+            });
+            request.signal.throwIfAborted();
+            queueAudio("", true);
+            cloudTurns = [...turns, { role: "assistant", content: response.slice(0, 10000) }].slice(-14);
+          } catch (err) {
+            if (!el.isConnected) return;
+            if (reply.textContent === "Waiting for DeepSeek…") reply.textContent = "";
+            answer.querySelector(".conversation-stream-status").textContent = request.signal.aborted
+              ? "Reply stopped."
+              : err.message || "Couldn’t get a DeepSeek reply.";
+            if (!request.signal.aborted && !input.value.trim()) input.value = message;
+          } finally {
+            if (cloudRequest === request) cloudRequest = null;
+          }
+        };
+        const ask = async (message, forceQuestion = false) => {
+          if (!message.trim() || processing || voiceRequest) return;
+          const online = cloudMode;
+          const draftFirst = first && capture && !online && !forceQuestion &&
+            !/\?\s*$|^(what|who|why|when|where|how|can you|should i|tell me|plan my|summari[sz]e)\b/i.test(message);
+          first = false;
+          processing = true;
+          intro.hidden = true;
+          el.querySelector("#s-title").textContent = "Conversation";
+          input.placeholder = "Ask a follow-up or add a thought";
+          stopVoice();
+          stopSpeech();
+          output?.stop();
+          status.textContent = "";
+          input.value = "";
+          sync();
+          input.focus();
+          const turn = append(`<div class="conversation-user"><p class="sr-only">You</p><p>${esc(message)}</p></div>`);
+          if (online) {
+            const answer = append(`<div class="conversation-answer">
+              <h3>DeepSeek</h3>
+              <p class="conversation-stream">Waiting for DeepSeek…</p>
+              <p class="conversation-stream-status conversation-status"></p>
+            </div>`);
+            await cloudAsk(message, answer);
+            if (!el.isConnected) return;
+            offerDraft(message, turn, answer, true);
+          } else if (draftFirst) {
+            topic = "draft";
+            await makeDraft(message, append('<div class="conversation-draft"></div>'));
+          } else {
+            const answer = append('<div class="conversation-answer"><p class="conversation-status">Reading your question…</p></div>');
+            try {
+              const reply = await POS.ai.assistantReply(message, { topic });
+              if (!el.isConnected) return;
+              topic = reply.topic || topic;
+              answer.innerHTML = `<h3>${esc(reply.title)}</h3><p>${esc(reply.text)}</p>
+                ${reply.bullets?.length ? `<ul>${reply.bullets.map((b) => `<li>${esc(b)}</li>`).join("")}</ul>` : ""}
+                ${reply.actions?.length ? `<div class="row wrap gap-2">${reply.actions.map((a) =>
+                  `<a class="btn btn-quiet" href="${esc(a.href)}">${esc(a.label)} ${icon("arrow-right")}</a>`).join("")}</div>` : ""}`;
+              answer.querySelectorAll("a").forEach((a) => a.addEventListener("click", close));
+              offerDraft(message, turn, answer, false);
+              speak(`${reply.title}. ${reply.text} ${(reply.bullets || []).join(". ")}`);
+            } catch {
+              answer.textContent = "Couldn’t answer that. Try again. Nothing was saved.";
+            }
+          }
+          processing = false;
+          sync();
+          if (thread.scrollHeight - thread.scrollTop - thread.clientHeight > 50) {
+            const latest = log.lastElementChild;
+            latest?.scrollIntoView({ block: "start", behavior: "instant" });
+          }
+        };
+        form.addEventListener("submit", (e) => { e.preventDefault(); ask(input.value.trim()); });
+        input.addEventListener("input", sync);
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+            e.preventDefault();
+            form.requestSubmit();
+          }
+        });
+        intro.querySelectorAll("[data-question]").forEach((b) => b.addEventListener("click", () => ask(b.dataset.question, true)));
+        if (start) ask(start.trim(), !capture);
+        else sync();
       },
     });
-    return s;
   }
 
   /* =========================================================

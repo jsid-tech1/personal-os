@@ -234,8 +234,8 @@
       <div class="mobilebar-inner">
         ${item("today", "Today", "today", "#/today")}
         ${item("calendar", "Calendar", "calendar", "#/calendar")}
-        <button class="capture-fab" id="mobile-capture" aria-label="Add task">
-          <i>${icon("plus")}</i><span>Add task</span>
+        <button class="capture-fab" id="mobile-capture" aria-label="Capture">
+          <i>${icon("plus")}</i><span>Capture</span>
         </button>
         ${item("mosaic", "Mosaic", "columns", "#/mosaic")}
         <button class="mobile-more" id="mobile-more" aria-label="Open navigation">
@@ -261,7 +261,7 @@
         <div class="status-line ${navigator.onLine ? "" : "is-offline"}">
           <span class="dot"></span>
           <span id="local-save-status">${store.persistenceError() ? "Changes not saved" : navigator.onLine ? "Saved on this device" : "Offline · still saved"}</span>
-        </div><p class="sidebar-sync" data-sync-status>${esc(POS.sync?.status().error || POS.sync?.status().text || "Saved on this device")}</p>`;
+        </div>`;
       foot.querySelector("#sidebar-assistant").addEventListener("click", () => ui.openAssistant());
     }
 
@@ -316,7 +316,8 @@
 
   function closeOverlays() {
     document.querySelectorAll(".modal-wrap, .sheet-wrap, .palette-wrap").forEach((el) => {
-      if (el._close) el._close();
+      if (el.__posClose) el.__posClose();
+      else if (el._close) el._close();
       else el.remove();
     });
     document.querySelectorAll(".menu, .popover").forEach((el) => el.remove());
@@ -330,8 +331,8 @@
     menuBtn().innerHTML = icon("list");
     document.getElementById("notify-btn").innerHTML = icon("bell");
     const capture = document.getElementById("capture-btn");
-    capture.innerHTML = icon("plus") + "<span>Add task</span>";
-    capture.setAttribute("aria-label", "Add task");
+    capture.innerHTML = icon("plus") + "<span>Capture</span>";
+    capture.setAttribute("aria-label", "Capture");
   }
 
   /* =========================================================
@@ -388,7 +389,6 @@
     mobile.inert = !signedIn;
     document.querySelector(".skip-link").href = signedIn ? "#main" : "#welcome-main";
     updateStorageStatus();
-    if (POS.sync) POS.sync.activate(status.user);
     lastPath = null;
     if (signedIn) {
       render("signin");

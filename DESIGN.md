@@ -116,6 +116,16 @@ exponential ease-out, from an already-visible default. Overlays slide 12px and f
 states are colour and 1px shifts only. Timer digits do not animate; they tick. Respect
 `prefers-reduced-motion` by removing transforms, not feedback.
 
+## Today: The Day Sheet
+
+The first priority is the strongest element after the date, with a visible Start focus action.
+On desktop, workload, deadlines and habits sit in a quiet margin. On narrow screens they
+follow the priorities and schedule.
+
+Read the schedule down a shared time column. Show meaningful gaps and use ultramarine for
+the current time. Booked blocks have solid edges; proposals have dashed edges and a text
+label. The review action opens the planner; only approval changes the schedule.
+
 ## Browser surfaces
 
 Selection is ultramarine at 18% with ink text. Focus is a 2px accent ring offset 2px. Scrollbars
