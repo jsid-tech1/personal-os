@@ -1,6 +1,7 @@
 /* Live voice session broker. Verifies the caller, then exchanges the browser's
    SDP offer for an answer at OpenAI. The API key never reaches the browser. */
 const { createHash } = require("node:crypto");
+const { allowedOrigin } = require("./origin.cjs");
 
 const limits = new Map();
 const MAX_SDP = 1_000_000;
@@ -97,19 +98,6 @@ function send(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-function allowedOrigin(origin) {
-  if (!origin) return true;
-  return [
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-    "http://localhost:8787",
-    "http://127.0.0.1:8787",
-    "https://personal-os-12b89.web.app",
-    "https://personal-os-12b89.firebaseapp.com",
-    process.env.APP_ORIGIN,
-  ].filter(Boolean).includes(origin);
-}
-
 async function readJson(req) {
   if (req.body && typeof req.body === "object") return req.body;
   let raw = "";
@@ -122,7 +110,7 @@ async function readJson(req) {
 
 async function handler(req, res) {
   if (req.method !== "POST") return send(res, 405, { error: "Use POST." });
-  if (!allowedOrigin(req.headers.origin)) return send(res, 403, { error: "Origin not allowed." });
+  if (!allowedOrigin(req)) return send(res, 403, { error: "Origin not allowed." });
 
   const token = /^Bearer (.+)$/.exec(req.headers.authorization || "");
   if (!token) return send(res, 401, { error: "Sign in before starting live voice." });

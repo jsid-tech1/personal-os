@@ -1,0 +1,22 @@
+# Only send files used by the production build and its two Node functions.
+*
+!vercel.json
+!package.json
+!package-lock.json
+!index.html
+!assets/
+!assets/**
+!css/
+!css/**
+!js/
+!js/**
+!api/
+!api/*.js
+!functions/
+!functions/*.cjs
+!scripts/
+!scripts/build.cjs
+!tests/
+!tests/integrity.test.cjs
+!tests/api.test.cjs
+!tests/vercel.test.cjs

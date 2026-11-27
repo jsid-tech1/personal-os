@@ -1,5 +1,7 @@
 # Firebase connection
 
+For the Vercel production site, see [Personal OS on Vercel](docs/vercel.md).
+
 Project: **personal-os-12b89**. Web SDK: **13.4.0**.
 Configuration is in `js/firebase-config.js`; the connection is in `js/cloud.js`.
 

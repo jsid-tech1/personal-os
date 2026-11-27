@@ -5,6 +5,7 @@ playwright-report/
 firebase-debug.log*
 firestore-debug.log*
 dist/
+.vercel/
 .taste-skill/
 .env
 .env.*
