@@ -52,18 +52,20 @@
           <input type="checkbox" ${done ? "checked" : ""} data-act="toggle-task" data-id="${t.id}"
                  aria-label="${done ? "Mark incomplete" : "Mark complete"}: ${esc(t.title)}" />
           <span class="check-label grow">
-            <span class="row-title">${esc(t.title)}</span>
+            <span class="task-heading">
+              <span class="row-title">${esc(t.title)}</span>
+              ${time ? `<span class="task-times mono">${time}</span>` : ""}
+            </span>
             <span class="row-meta">
               ${project ? projectTag(project.id) : '<span class="tag tag-outline">Personal</span>'}
               ${t.duration ? `<span class="mono">${fmtDur(t.duration)}</span>` : ""}
-              ${opts.showDate && t.date ? `<span class="sep">·</span><span>${relDate(t.date)}</span>` : ""}
-              ${late ? `<span class="sep">·</span><span class="danger">Missed</span>` : ""}
-              ${t.priority === 1 && !done ? `<span class="sep">·</span><span class="tag tag-warning" style="height:17px">Priority</span>` : ""}
+              ${opts.showDate && t.date && (!time || t.start != null) ? `<span>${relDate(t.date)}</span>` : ""}
+              ${late ? `<span class="danger">Missed</span>` : ""}
+              ${t.priority === 1 && !done ? `<span class="tag tag-warning">Priority</span>` : ""}
             </span>
           </span>
         </label>
         <div class="row-end">
-          ${time ? `<span class="task-times mono">${time}</span>` : ""}
           <button class="icon-btn icon-btn-sm" data-act="open-task" data-id="${t.id}" aria-label="Open task: ${esc(t.title)}">
             ${icon("more")}
           </button>

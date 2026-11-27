@@ -2442,13 +2442,13 @@
   .planner-summary,
   .habit-stats,
   .rf-stats { grid-template-columns: minmax(0, 1fr); }
-  .planner-stat,
   .habit-stat,
   .rf-stat {
     border-left: 0 !important;
     padding-left: 0 !important;
     border-top: 1px solid var(--line-soft);
   }
+  .planner-stat { border-left: 0; border-top: 1px solid var(--line-soft); }
   .planner-stat:first-child,
   .habit-stat:first-child,
   .rf-stat:first-child { border-top: 0; }
