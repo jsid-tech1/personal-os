@@ -33,4 +33,5 @@ const server = http.createServer(async (req, res) => {
   } catch { res.writeHead(404).end("Not found"); }
 });
 server.on("error", error => { console.error(error.message); process.exitCode = 1; });
-server.listen(Number(process.env.PORT) || 8000, "127.0.0.1", () => console.log("Personal OS: http://localhost:8000 (fresh files; caching disabled)"));
+const port = Number(process.env.PORT) || 8000;
+server.listen(port, "127.0.0.1", () => console.log(`Personal OS: http://127.0.0.1:${port} (fresh files; caching disabled)`));

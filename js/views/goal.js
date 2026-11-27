@@ -12,6 +12,9 @@
   let editing = false;
   let attachProjectId = null;
   let lastValues = null;
+  let draftError = "";
+  let request = null;
+  let owner = null;
 
   function formValues(main) {
     if (!main) return null;
@@ -21,6 +24,7 @@
       targetDate: main.querySelector("#g-date")?.value || U.addDays(U.todayISO(), 30),
       capacity: Number(main.querySelector("#g-cap")?.value) || 240,
       weekendsOff: !!main.querySelector("#g-weekends")?.checked,
+      provider: main.querySelector("#g-provider")?.value || "deepseek",
     };
   }
 
@@ -39,7 +43,7 @@
             <div class="page-sub">
               <span>A goal becomes milestones. Milestones become work you can put on a day.</span>
               <span class="dot-sep">·</span>
-              <span class="mono">Local draft</span>
+              <span class="mono">${plan ? plan.local ? "On-device draft" : "DeepSeek draft" : "Review before saving"}</span>
             </div>
           </div>
           <div class="page-actions">
@@ -74,7 +78,7 @@
                 </div>
                 <div class="field">
                   <label class="label" for="g-cap">Daily minutes</label>
-                  <input class="input" type="number" id="g-cap" value="${saved.capacity || st.settings.capacity}" min="45" step="15" />
+                  <input class="input" type="number" id="g-cap" value="${saved.capacity || st.settings.capacity}" min="15" max="720" step="15" />
                 </div>
               </div>
               <label class="switch">
@@ -82,20 +86,28 @@
                 <span class="track"></span>
                 <span>Keep weekends out of the draft</span>
               </label>
-              <button class="btn btn-accent btn-lg btn-block" id="g-draft">
-                ${icon("sparkles")} ${plan ? "Draft it again" : "Draft the plan"}
+              <div class="field">
+                <label class="label" for="g-provider">Planner</label>
+                <select class="input" id="g-provider" ${busy ? "disabled" : ""}>
+                  <option value="deepseek" ${saved.provider !== "local" ? "selected" : ""}>DeepSeek agent</option>
+                  <option value="local" ${saved.provider === "local" ? "selected" : ""}>On-device templates</option>
+                </select>
+              </div>
+              <button class="btn btn-accent btn-lg btn-block" id="g-draft" ${busy ? "disabled" : ""}>
+                ${icon("sparkles")} ${busy ? "Building your plan…" : plan ? "Draft it again" : "Draft the plan"}
               </button>
               <p style="font-size:11px;color:var(--ink-4);line-height:1.6">
-                The assistant uses templates and your calendar. It never calls a model and never
-                saves anything until you approve. Every date and title is editable.
+                DeepSeek receives your goal, context and daily minutes. Calendar dates are checked
+                locally. On-device templates work without AI. Nothing is saved until you approve.
               </p>
+              <p role="alert" ${draftError ? "" : "hidden"}>${esc(draftError)}</p>
             </div>
 
             ${!plan ? `
             <div class="goal-how">
               <div class="goal-how-title">What happens next</div>
               <ol>
-                <li><span class="mono">01</span> The goal is split into 3–4 milestones.</li>
+                <li><span class="mono">01</span> The goal is split into milestones.</li>
                 <li><span class="mono">02</span> Each milestone gets tasks with estimates.</li>
                 <li><span class="mono">03</span> Tasks are distributed across your working days.</li>
                 <li><span class="mono">04</span> You edit, regenerate, or approve the draft.</li>
@@ -182,7 +194,7 @@
                 <span class="sep">/</span>
                 <span>${U.fmtDur(plan.totalMinutes)} of work</span>
                 <span class="sep">/</span>
-                <span>${days.size} working days</span>
+                <span>${days.size} working ${days.size === 1 ? "day" : "days"}</span>
               </div>
             </div>
             <div style="text-align:right">
@@ -209,7 +221,7 @@
                 <span class="ms-num serif">${String(mi + 1).padStart(2, "0")}</span>
                 <span class="grow">
                   <span class="ms-title">${esc(m.title)}</span>
-                  <span class="ms-meta mono">${m.tasks.length} tasks · ${U.fmtDur(mins)} · due ${U.fmtDate(m.due, "short")}</span>
+                  <span class="ms-meta mono">${m.tasks.length} ${m.tasks.length === 1 ? "task" : "tasks"} · ${U.fmtDur(mins)} · due ${U.fmtDate(m.due, "short")}</span>
                 </span>
                 <span class="ms-chev">${icon(open ? "chevron-down" : "chevron-right")}</span>
               </button>
@@ -267,6 +279,7 @@
   }
 
   async function draft(main, regenerate = false) {
+    if (busy) return;
     const values = formValues(main);
     if (!values.title.trim()) {
       ui.toast("Give the goal a name first.", { kind: "danger" });
@@ -275,26 +288,44 @@
       return;
     }
     busy = true;
+    draftError = "";
+    const controller = new AbortController();
+    request = controller;
+    const account = POS.cloud.getStatus().user?.uid;
+    owner = account;
     editing = false;
     plan = null;
     lastValues = values;
     render(main);
     try {
-      const result = await POS.ai.breakdown(values);
+      const result = values.provider === "local" ? await POS.ai.breakdown(values) : await POS.goalAgent.breakdown(values, { signal: controller.signal });
+      if (controller.signal.aborted || POS.cloud.getStatus().user?.uid !== account) return;
       plan = result;
       busy = false;
       render(main);
-      if (regenerate) ui.toast("New draft. Same inputs, fresh distribution.");
+      if (regenerate) ui.toast("New draft ready. Review before approving.");
       else ui.toast("Draft ready. Nothing scheduled yet.");
     } catch (err) {
+      if (controller.signal.aborted) return;
       busy = false;
+      draftError = err.name === "TimeoutError" ? "The planner took too long. Retry or choose On-device templates." : err.message || "Could not draft the plan. Try again.";
       render(main);
-      ui.toast("Could not draft the plan. Try again.", { kind: "danger" });
+      ui.toast(draftError, { kind: "danger" });
+    } finally {
+      if (request === controller) request = null;
     }
   }
 
   async function approve(main) {
     if (!plan) return;
+    const reviewed = plan;
+    const account = POS.cloud.getStatus().user?.uid;
+    function validate() {
+      if (!account || account !== owner || POS.cloud.getStatus().user?.uid !== account || plan !== reviewed) throw new Error("Your account or draft changed. Generate a new plan.");
+      if (!plan.local) POS.planning.validate(plan.milestones.flatMap(m => m.tasks), { start: U.todayISO(), deadline: plan.targetDate, capacity: plan.capacity, days: plan.workingDays }, store.get().tasks);
+    }
+    try { validate(); }
+    catch (err) { ui.toast(err.message, { kind: "danger" }); return; }
     if (editing) { captureEdits(main); }
     const totalTasks = plan.milestones.reduce((n, m) => n + m.tasks.length, 0);
     const ok = await ui.confirm({
@@ -303,6 +334,8 @@
       confirmLabel: "Create project & tasks",
     });
     if (!ok) return;
+    try { validate(); }
+    catch (err) { ui.toast(err.message, { kind: "danger" }); return; }
 
     const colours = ["cobalt", "teal", "plum", "ochre", "moss", "slate"];
     let targetProject = attachProjectId ? store.project(attachProjectId) : null;
@@ -321,6 +354,7 @@
         };
         s.projects.push(targetProject);
       }
+      let order = 0;
       plan.milestones.forEach((m) => {
         const existing = targetProject.milestones.find((x) => x.title === m.title);
         const ms = existing || { id: U.uid("m"), title: m.title, due: m.due };
@@ -335,6 +369,7 @@
             start: null,
             duration: t.duration,
             priority: t.priority,
+            order: order++,
             done: false,
             deps: t.depTitle ? [t.depTitle] : [],
             notes: "",
@@ -369,5 +404,10 @@
   }
 
   POS.views = POS.views || {};
+  POS.cloud.subscribe(status => {
+    if (status.user?.uid === owner) return;
+    request?.abort(); request = null; busy = false; plan = null; editing = false;
+    lastValues = null; attachProjectId = null; draftError = ""; owner = status.user?.uid || null;
+  });
   POS.views.goal = { render: renderWithExamples };
 })();

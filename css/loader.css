@@ -1,0 +1,46 @@
+/* Original, finite mosaic reveal. Never blocks pointer/keyboard input or waits on Firebase. */
+.mosaic-loader { display: none; }
+.mosaic-loading .mosaic-loader {
+  position: fixed; inset: 0; z-index: 200; display: grid; place-items: center;
+  background: var(--paper, #f3f4f0); color: var(--ink, #202923);
+  pointer-events: none; animation: mosaic-loader-exit 180ms ease 1000ms forwards;
+}
+.loader-composition { display: grid; justify-items: center; gap: 24px; }
+.loader-grid { width: 132px; aspect-ratio: 1; display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+.loader-grid i {
+  background: var(--fragment, #315b43); opacity: 0;
+  animation: mosaic-fragment-arrive 380ms cubic-bezier(.22,.61,.36,1) var(--delay, 0ms) both;
+}
+.loader-grid i:nth-child(5n) { --fragment: #c22d63; }
+.loader-grid i:nth-child(7n) { --fragment: #efb4c8; }
+.loader-grid i:nth-child(3n) { --fragment: #d5df83; }
+.loader-grid i:nth-child(8n+2) { --delay: 140ms; }
+.loader-grid i:nth-child(8n+3) { --delay: 56ms; }
+.loader-grid i:nth-child(8n+4) { --delay: 196ms; }
+.loader-grid i:nth-child(8n+5) { --delay: 84ms; }
+.loader-grid i:nth-child(8n+6) { --delay: 224ms; }
+.loader-grid i:nth-child(8n+7) { --delay: 112ms; }
+.loader-grid i:nth-child(8n+8) { --delay: 168ms; }
+.loader-grid i:nth-child(11n), .loader-grid i:nth-child(13n) { visibility: hidden; }
+.loader-wordmark { font-family: var(--font-display, Georgia, serif); font-size: 30px; line-height: 1.2; }
+.mosaic-loading .mosaic-loader.is-leaving { animation: mosaic-loader-exit 160ms ease forwards; }
+.route-mosaic {
+  position: absolute; inset: 0; display: grid; place-items: start center;
+  padding-top: min(24vh, 180px); z-index: 30; background: var(--paper);
+  pointer-events: none; animation: mosaic-loader-exit 160ms ease 100ms forwards;
+}
+.route-mosaic .loader-grid { width: 80px; gap: 3px; }
+.route-mosaic .loader-grid i { animation-duration: 120ms; animation-delay: calc(var(--delay) / 4); }
+.main { position: relative; }
+@keyframes mosaic-fragment-arrive {
+  from { opacity: 0; transform: translateY(10px) scale(.3); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes mosaic-loader-exit {
+  from { opacity: 1; visibility: visible; }
+  to { opacity: 0; visibility: hidden; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mosaic-loading .mosaic-loader, .route-mosaic { display: none; animation: none; }
+  .loader-grid i { animation: none; opacity: 1; }
+}

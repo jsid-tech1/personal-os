@@ -1,5 +1,7 @@
 # DeepSeek in Capture
 
+For the **goal-to-task agent**, use `npm run dev` and open **Goal Breakdown** → **DeepSeek agent** → **Draft the plan**. The key is loaded from `.env`; tasks are only saved after approval. A terminal-only option is `npm run agent -- "Your goal" --capacity=120`. See [AI planning setup](docs/AI_AND_SYNC_SETUP.md). The separate Capture relay below is not the goal-planning server.
+
 Run Node.js 22 or newer. Copy `.env.example` to `.env`, set `DEEPSEEK_API_KEY` in that private file, and start:
 
 ```powershell

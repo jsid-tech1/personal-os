@@ -109,6 +109,99 @@ async function signIn(page) {
   await page.waitForFunction(() => !POS.cloud.getStatus().busy);
 }
 
+test("DeepSeek goal draft reviews milestones and only saves after approval", async t => {
+  const { page } = await open(t);
+  await signIn(page);
+  let sent;
+  await page.route("**/api/plan", route => {
+    sent = route.request().postDataJSON();
+    return route.fulfill({ contentType: "application/json", body: JSON.stringify({ title: "Design presentation", steps: [
+      { title: "Outline the story", duration: 30, milestone: "Shape the story" },
+      { title: "Build the slides", duration: 45, milestone: "Build and verify" },
+      { title: "Rehearse and export", duration: 20, milestone: "Build and verify" },
+    ] }) });
+  });
+  await page.evaluate(() => { location.hash = "#/goal"; });
+  await page.locator("#g-title").fill("Prepare my design presentation");
+  await page.locator("#g-desc").fill("Use the sketches I already have");
+  await page.locator("#g-cap").fill("120");
+  await page.locator("#g-draft").click();
+  await page.locator("#g-approve").waitFor();
+  assert.deepEqual(sent, { description: "Prepare my design presentation\n\nUse the sketches I already have", capacity: 120 });
+  assert.equal(await page.locator(".ms").count(), 2);
+  assert.equal(await page.locator(".plan-task").count(), 3);
+  assert.equal(await page.evaluate(() => POS.store.get().tasks.length), 0);
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.screenshot({ path: "test-results/deepseek-goal-desktop.png", fullPage: true });
+  await page.locator("#g-edit").click();
+  await page.locator('[data-edit-title="0-0"]').fill("Outline my presentation story");
+  await page.locator("#g-approve").click();
+  await page.locator("[data-yes]").click();
+  await page.waitForFunction(() => POS.store.get().tasks.length === 3);
+  assert.equal(await page.evaluate(() => POS.store.get().tasks[0].title), "Outline my presentation story");
+  assert.equal(await page.evaluate(() => POS.store.get().projects[0].milestones.length), 2);
+});
+
+test("DeepSeek goal errors stay visible on mobile and on-device fallback is explicit", async t => {
+  const { page } = await open(t, { viewport: { width: 390, height: 844 } });
+  await signIn(page);
+  await page.route("**/api/plan", route => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "The DeepSeek account has insufficient balance. Choose On-device templates." }) }));
+  await page.evaluate(() => { location.hash = "#/goal"; });
+  await page.locator("#g-title").fill("Finish my design portfolio");
+  await page.locator("#g-draft").click();
+  await page.locator('.goal-form [role="alert"]:not([hidden])').waitFor();
+  assert.match(await page.locator('.goal-form [role="alert"]').innerText(), /insufficient balance/);
+  assert.equal(await page.locator("#g-approve").count(), 0);
+  assert.equal(await page.evaluate(() => POS.store.get().tasks.length), 0);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.screenshot({ path: "test-results/deepseek-goal-mobile-error.png", fullPage: true });
+  await page.locator("#g-provider").selectOption("local");
+  await page.locator("#g-draft").click();
+  await page.locator("#g-approve").waitFor();
+  assert.match(await page.locator(".page-sub").innerText(), /On-device draft/);
+  assert.equal(await page.evaluate(() => POS.store.get().tasks.length), 0);
+});
+
+test("DeepSeek goal approval rechecks edited dates and changed calendar capacity", async t => {
+  const { page } = await open(t);
+  await signIn(page);
+  await page.route("**/api/plan", route => route.fulfill({ contentType: "application/json", body: JSON.stringify({ title: "Design presentation", steps: [{ title: "Draft the presentation", duration: 60, milestone: "Draft" }] }) }));
+  await page.evaluate(() => { location.hash = "#/goal"; });
+  await page.locator("#g-title").fill("Prepare my design presentation");
+  await page.locator("#g-cap").fill("60");
+  await page.locator("#g-draft").click();
+  await page.locator("#g-approve").waitFor();
+  await page.locator("#g-edit").click();
+  await page.locator('[data-edit-date="0-0"]').fill("2020-01-01");
+  await page.locator("#g-approve").click();
+  assert.equal(await page.locator("[data-yes]").count(), 0);
+  assert.equal(await page.evaluate(() => POS.store.get().tasks.length), 0);
+  const original = await page.locator("#g-date").inputValue();
+  const workingDay = await page.evaluate(deadline => { let date = deadline; while ([0, 6].includes(new Date(date + "T12:00").getDay())) date = POS.planning.add(date, -1); return date; }, original);
+  await page.locator('[data-edit-date="0-0"]').fill(workingDay);
+  await page.evaluate(date => POS.store.actions.addTask({ title: "Existing commitment", date, duration: 60 }), workingDay);
+  await page.locator("#g-approve").click();
+  assert.equal(await page.locator("[data-yes]").count(), 0);
+  assert.equal(await page.evaluate(() => POS.store.get().tasks.length), 1);
+});
+
+test("DeepSeek goal drafts disappear when the account changes", async t => {
+  const { page } = await open(t);
+  await signIn(page);
+  await page.route("**/api/plan", route => route.fulfill({ contentType: "application/json", body: JSON.stringify({ title: "Alice private goal", steps: [{ title: "Private draft", duration: 30, milestone: "Private milestone" }] }) }));
+  await page.evaluate(() => { location.hash = "#/goal"; });
+  await page.locator("#g-title").fill("Alice private goal description");
+  await page.locator("#g-draft").click();
+  await page.locator("#g-approve").waitFor();
+  await page.evaluate(() => mock.changeAccount("bob"));
+  await page.waitForFunction(() => POS.cloud.getStatus().user?.uid === "bob");
+  await page.locator("#g-title").waitFor();
+  assert.equal(await page.locator("#g-approve").count(), 0);
+  assert.equal(await page.locator("#g-title").inputValue(), "");
+  assert.equal(await page.evaluate(() => POS.store.get().tasks.length), 0);
+});
+
 test("initialization and Google sign-in preserve local work; explicit backup is account-scoped", async t => {
   const { page } = await open(t);
   await page.evaluate(() => POS.store.actions.addTask({ title: "Local task to preserve" }));
@@ -685,4 +778,120 @@ test("a second device restores the automatically saved private workspace on sign
   assert.equal(await second.page.evaluate(() => POS.sync.status().ready), true);
   await second.page.evaluate(() => mock.changeAccount("bob"));
   assert.equal(await second.page.evaluate(() => POS.store.get().tasks.length), 0);
+});
+
+test("spoken project conversation retains context and creates a brief without saving tasks", async t => {
+  const { page } = await open(t, { viewport: { width: 390, height: 844 } });
+  await signIn(page);
+  await page.evaluate(() => {
+    window.SpeechRecognition = class {
+      start() { window.voiceMock = this; this.onstart(); }
+      stop() { this.onend?.(); }
+      abort() { window.voiceAborted = true; this.onend?.(); }
+    };
+  });
+  const requests = [];
+  await page.route("**/api/plan", async route => {
+    const body = route.request().postDataJSON(); requests.push(body);
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify({ reply: requests.length === 1 ? "What needs to be ready for the submission?" : "We can plan research, sketches and a presentation.", brief: "Typography project: research, sketches and a presentation. Deadline: 10 December 2026.", ready: requests.length > 1 }) });
+  });
+  await page.locator("#capture-btn").click();
+  await page.locator("#project-conversation summary").click();
+  await page.locator("#conversation-mic").click();
+  await page.evaluate(() => { voiceMock.onresult({ results: [[{ transcript: "I am making a typography project" }]] }); voiceMock.onend(); });
+  assert.equal(await page.locator("#conversation-input").inputValue(), "I am making a typography project");
+  assert.equal(requests.length, 0, "dictation is not sent without explicit approval");
+  await page.locator("#conversation-send").click();
+  await page.locator(".conversation-bubble.assistant").filter({ hasText: "What needs" }).waitFor();
+  await page.locator("#conversation-input").fill("Research, sketches and a presentation, due on 10 December");
+  await page.locator("#conversation-send").click();
+  await page.locator(".conversation-bubble.assistant").filter({ hasText: "We can plan" }).waitFor();
+  assert.equal(requests[1].messages.length, 3);
+  assert.equal(requests[1].messages[1].role, "assistant");
+  await page.locator("#conversation-use").click();
+  assert.match(await page.locator("#plan-description").inputValue(), /Typography project/);
+  assert.equal(await page.locator("#plan-deadline").inputValue(), "2026-12-10");
+  assert.equal(await page.evaluate(() => POS.store.get().tasks.length), 0);
+  await page.getByRole("button", { name: "Close task planner" }).click();
+  assert.equal(await page.evaluate(() => voiceAborted), true);
+});
+
+test("voice permission failure and unavailable recognition keep typing usable", async t => {
+  const { page } = await open(t);
+  await signIn(page);
+  await page.evaluate(() => { window.SpeechRecognition = class { start() { this.onerror({ error: "not-allowed" }); this.onend(); } abort() {} }; });
+  await page.locator("#capture-btn").click();
+  await page.locator("#project-conversation summary").click();
+  await page.locator("#conversation-mic").click();
+  assert.match(await page.locator("#conversation-status").innerText(), /permission was denied/);
+  assert.equal(await page.locator("#conversation-send").isEnabled(), true);
+  await page.getByRole("button", { name: "Close task planner" }).click();
+  await page.evaluate(() => { window.SpeechRecognition = undefined; window.webkitSpeechRecognition = undefined; });
+  await page.locator("#capture-btn").click();
+  await page.locator("#project-conversation summary").click();
+  assert.equal(await page.locator("#conversation-mic").isVisible(), false);
+  await page.locator("#conversation-input").fill("I can still describe my project");
+  assert.match(await page.locator("#conversation-voice-help").innerText(), /unavailable/);
+});
+
+test("readable typography is maintained across landing, tasks and conversation on desktop and phone", async t => {
+  const { page } = await open(t);
+  const size = selector => page.locator(selector).first().evaluate(el => parseFloat(getComputedStyle(el).fontSize));
+  assert.ok(await size("body") >= 16);
+  assert.ok(await size(".landing-description") >= 18);
+  assert.ok(await size(".welcome-account-help") >= 14);
+  await signIn(page);
+  await page.evaluate(() => { POS.store.actions.addTask({ title: "A clearly readable task" }); location.hash = "#/today"; });
+  await page.locator(".task-copy strong").waitFor();
+  for (const width of [1440, 768, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert.ok(await size(".task-copy strong") >= 16, `${width}px task title`);
+    assert.ok(await size(".task-copy p") >= 14, `${width}px task details`);
+    assert.ok(await size(".studio-page-head p") >= 14, `${width}px date label`);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${width}px dashboard fits`);
+  }
+  await page.locator("#capture-btn").click();
+  await page.locator("#project-conversation summary").click();
+  assert.ok(await size(".conversation-bubble") >= 16);
+  assert.ok(await size("#conversation-input") >= 16);
+  assert.ok(await size(".field-help") >= 14);
+  assert.equal(await page.locator(".plan-overlay").evaluate(el => el.scrollWidth > el.clientWidth), false);
+  await page.screenshot({ path: "test-results/readable-conversation-320.png" });
+});
+
+test("mosaic reveals expire, never intercept controls and do not replay on task updates", async t => {
+  const { page } = await open(t, { reducedMotion: "no-preference" });
+  await page.waitForFunction(() => !document.getElementById("mosaic-loader"));
+  assert.equal(await page.locator("html").evaluate(el => el.classList.contains("mosaic-loading")), false);
+  await signIn(page);
+  await page.evaluate(() => { POS.store.actions.addTask({ title: "Click through the mosaic" }); location.hash = "#/today"; });
+  await page.locator(".task-copy strong").waitFor();
+  const reveal = await page.evaluate(() => {
+    const main = document.getElementById("main");
+    POS.loader.reveal(main);
+    const button = main.querySelector("[data-plan]"), rect = button.getBoundingClientRect();
+    return { tiles: main.querySelectorAll(".route-mosaic .loader-grid i").length, pointer: getComputedStyle(main.querySelector(".route-mosaic")).pointerEvents, receivesClick: button.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)) };
+  });
+  assert.equal(reveal.tiles, 64);
+  assert.equal(reveal.pointer, "none");
+  assert.equal(reveal.receivesClick, true);
+  await page.waitForFunction(() => !document.querySelector(".route-mosaic"));
+  await page.getByRole("checkbox", { name: "Complete Click through the mosaic", exact: true }).click();
+  assert.equal(await page.locator(".route-mosaic").count(), 0);
+  await page.reload();
+  await page.waitForFunction(() => !document.getElementById("mosaic-loader"));
+  assert.equal(await page.locator(".studio-dashboard-grid").isVisible(), true);
+});
+
+test("reduced motion skips mosaic screen reveals and missing loader code cannot trap the page", async t => {
+  const { page, context } = await open(t);
+  await signIn(page);
+  await page.evaluate(() => POS.loader.reveal(document.getElementById("main")));
+  assert.equal(await page.locator(".route-mosaic").count(), 0);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await context.route("**/js/loader.js?*", route => route.abort());
+  await page.reload();
+  await page.waitForFunction(() => getComputedStyle(document.getElementById("mosaic-loader")).visibility === "hidden");
+  assert.equal(await page.locator("#mosaic-loader").isVisible(), false);
+  assert.equal(await page.locator("#app").isVisible(), true);
 });
