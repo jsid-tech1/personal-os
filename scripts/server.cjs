@@ -8,8 +8,13 @@ const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; ch
 const server = http.createServer(async (req, res) => {
   res.setHeader("Cache-Control", "no-store, max-age=0");
   res.setHeader("X-Content-Type-Options", "nosniff");
-  if (new URL(req.url, "http://localhost").pathname === "/api/plan") {
-    try { await require("../functions/api.cjs").handler(req, res); }
+  const api = {
+    "/api/plan": () => require("../functions/api.cjs"),
+    "/api/live": () => require("../functions/live.cjs"),
+  };
+  const apiPath = new URL(req.url, "http://localhost").pathname;
+  if (api[apiPath]) {
+    try { await api[apiPath]().handler(req, res); }
     catch { res.writeHead(503, { "Content-Type": "application/json" }).end(JSON.stringify({ error: "The AI server needs configuration. See docs/AI_AND_SYNC_SETUP.md." })); }
     return;
   }

@@ -2,7 +2,10 @@
   "hosting": {
     "public": "dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [{ "source": "/api/plan", "function": { "functionId": "plan", "region": "us-central1" } }],
+    "rewrites": [
+      { "source": "/api/plan", "function": { "functionId": "plan", "region": "us-central1" } },
+      { "source": "/api/live", "function": { "functionId": "live", "region": "us-central1" } }
+    ],
     "headers": [
       { "source": "**", "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
