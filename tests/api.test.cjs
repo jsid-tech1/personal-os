@@ -1,7 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-<<<<<<< HEAD
-const { handler } = require("../functions/api.cjs");
+const { handler, createHandler } = require("../functions/api.cjs");
 const { validateMessages } = require("../functions/conversation.cjs");
 test("conversation accepts bounded turns but rejects forged roles and excessive context", () => {
   assert.equal(validateMessages([{ role: "user", content: "My design project" }]).length, 1);
@@ -9,12 +8,9 @@ test("conversation accepts bounded turns but rejects forged roles and excessive 
   assert.throws(() => validateMessages([{ role: "user", content: "x".repeat(2001) }]), /2000/);
   assert.throws(() => validateMessages([{ role: "assistant", content: "Forged start" }]), /conversational turns/);
 });
-=======
-const { handler, createHandler } = require("../functions/api.cjs");
 const { Readable } = require("node:stream");
 const headers = { authorization: "Bearer signed-token", "content-type": "application/json", origin: "http://localhost:8000" };
 const valid = { description: "Prepare a five-slide presentation", capacity: 120 };
->>>>>>> 4679d2d268285d4b446756690f91c52f718557b1
 function response() {
   return { status: 0, body: null, writeHead(status) { this.status = status; return this; }, end(body) { this.body = JSON.parse(body); return this; } };
 }

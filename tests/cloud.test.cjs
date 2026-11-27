@@ -42,7 +42,7 @@ const modules = {
     export const doc = (db, ...parts) => parts.join('/');
     export const serverTimestamp = () => 'SERVER_TIMESTAMP';
     export async function setDoc(ref, data) {
-      if (window.mock.dbError) throw { code: window.mock.dbError };
+      if (window.mock.dbError) throw { code: window.mock.dbError, message: window.mock.dbErrorMessage || '' };
       if (ref.includes('/backups/')) window.mock.writes.push({ ref, data });
       else (window.mock.syncWrites ||= []).push({ ref, data });
       window.mock.docs[ref] = structuredClone(data);
@@ -54,7 +54,7 @@ const modules = {
       return result;
     }
     export async function getDoc(ref) {
-      if (window.mock.dbError) throw { code: window.mock.dbError };
+      if (window.mock.dbError) throw { code: window.mock.dbError, message: window.mock.dbErrorMessage || '' };
       const data = window.mock.docs[ref];
       return { exists: () => !!data, data: () => structuredClone(data) };
     }`,
@@ -321,6 +321,30 @@ test("auth and permission errors are actionable; offline work continues", async 
   });
   assert.match(error, /offline/);
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem(POS.store.storageKey())).tasks.some(t => t.title === "Offline edit")), true);
+});
+
+test("disabled Firestore API shows setup actions, preserves local data and can retry after setup", async t => {
+  const { page } = await open(t, { viewport: { width: 390, height: 844 } });
+  await signIn(page);
+  await page.evaluate(() => {
+    POS.store.actions.addTask({ title: "Do not lose my work" });
+    mock.dbError = "permission-denied";
+    mock.dbErrorMessage = "Request failed with error: Cloud Firestore API has not been used in project personal-os-12b89 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/firestore.googleapis.com/overview?project=personal-os-12b89 then retry.";
+  });
+  const before = await page.evaluate(() => JSON.stringify(POS.store.get()));
+  await page.locator("#s-cloud-save").click();
+  await page.locator(".cloud-setup-help").waitFor();
+  assert.match(await page.locator("#s-cloud [role=alert]").innerText(), /Firestore API is disabled/);
+  assert.doesNotMatch(await page.locator("#s-cloud [role=alert]").innerText(), /https?:/);
+  assert.match(await page.getByRole("link", { name: /Enable Firestore API/ }).getAttribute("href"), /project=personal-os-12b89/);
+  assert.equal(await page.evaluate(() => JSON.stringify(POS.store.get())), before);
+  assert.equal(await page.locator("#app").isVisible(), true);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  await page.evaluate(() => { mock.dbError = null; mock.dbErrorMessage = ""; });
+  await page.locator("#s-cloud-save").click();
+  await page.waitForFunction(() => !!POS.cloud.getStatus().lastSaved);
+  assert.equal(await page.locator(".cloud-setup-help").count(), 0);
+  assert.equal(await page.evaluate(() => POS.store.get().tasks[0].title), "Do not lose my work");
 });
 
 test("SDK loading failure keeps workspace locked and retry can initialize Firebase", async t => {

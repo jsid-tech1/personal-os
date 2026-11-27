@@ -60,6 +60,14 @@
         </div>
         <p class="field-help" role="status">${esc(label)}${s.lastSaved ? " · Last saved " + esc(new Date(s.lastSaved).toLocaleString()) : ""}</p>
         ${s.error ? `<div class="note note-warning" role="alert">${icon("warning")}<span>${esc(s.error)}</span></div>` : ""}
+        ${s.setupRequired ? `<div class="cloud-setup-help">
+          <p class="field-help">The Firebase project owner must complete these steps. Choose the database region carefully; it cannot be changed in place. Keep production security rules—do not enable public access.</p>
+          <div class="data-actions">
+            <a class="btn" href="https://console.cloud.google.com/apis/library/firestore.googleapis.com?project=${encodeURIComponent(POS.firebaseConfig.projectId)}" target="_blank" rel="noopener noreferrer">1. Enable Firestore API ↗</a>
+            <a class="btn" href="https://console.firebase.google.com/project/${encodeURIComponent(POS.firebaseConfig.projectId)}/firestore" target="_blank" rel="noopener noreferrer">2. Create default database ↗</a>
+          </div>
+          <p class="field-help">Wait a few minutes after enabling the API, then use Save cloud backup again. Deploy firestore.rules before trying account-owned backups.</p>
+        </div>` : ""}
         <div class="data-actions">
           ${!s.ready ? `<button class="btn" id="s-cloud-retry" ${disabled}>${icon("rotate")} Retry connection</button>` : s.user ? `
             <button class="btn btn-primary" id="s-cloud-save" ${disabled}>${icon("upload")} Save cloud backup</button>
