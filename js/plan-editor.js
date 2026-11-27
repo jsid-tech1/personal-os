@@ -5,7 +5,7 @@
   let active = null;
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   function open() {
-    if (active) { active.querySelector("textarea")?.focus(); return; }
+    if (active) { active.querySelector("#plan-description")?.focus(); return; }
     const user = POS.cloud.getStatus().user;
     if (!user) return;
     const owner = user.uid, controller = new AbortController();
@@ -15,6 +15,7 @@
     wrap.setAttribute("role", "presentation");
     wrap.innerHTML = `<section class="plan-dialog" role="dialog" aria-modal="true" aria-labelledby="plan-heading">
       <div class="studio-section-head"><div><p class="subtle">A little structure for a big idea</p><h2 id="plan-heading">What are you working on?</h2></div><button class="icon-btn" data-close aria-label="Close task planner">${U.icon("close")}</button></div>
+      <div id="project-conversation-host"></div>
       <form id="plan-form">
         <label class="label" for="plan-description">Describe your task or project</label>
         <textarea class="input" id="plan-description" rows="4" maxlength="5000" required placeholder="I need to finish my typography project: research references, refine my typeface, make mockups and prepare a presentation."></textarea>
@@ -27,7 +28,8 @@
       <div id="plan-review" hidden></div>
     </section>`;
     const previous = document.activeElement;
-    function close() { controller.abort(); wrap.remove(); active = null; POS.ui.lockScroll(false); if (previous?.isConnected) previous.focus(); }
+    let conversation;
+    function close() { conversation?.destroy(); controller.abort(); wrap.remove(); active = null; POS.ui.lockScroll(false); if (previous?.isConnected) previous.focus(); }
     wrap._close = close;
     active = wrap;
     document.getElementById("overlay-root").append(wrap);
@@ -37,13 +39,19 @@
     wrap.addEventListener("keydown", e => {
       if (e.key === "Escape") close();
       if (e.key !== "Tab") return;
-      const nodes = [...wrap.querySelectorAll("button:not(:disabled), input, textarea, select, a[href]")].filter(el => !el.closest("[hidden]"));
+      const nodes = [...wrap.querySelectorAll("button:not(:disabled), input, textarea, select, a[href], summary")].filter(el => !el.closest("[hidden]") && el.getClientRects().length);
       if (e.shiftKey && document.activeElement === nodes[0]) { e.preventDefault(); nodes.at(-1).focus(); }
       else if (!e.shiftKey && document.activeElement === nodes.at(-1)) { e.preventDefault(); nodes[0].focus(); }
     });
     const $ = s => wrap.querySelector(s);
     $("#plan-description").focus();
     const message = text => { $("#plan-message").textContent = text; };
+    conversation = POS.projectConversation.mount($("#project-conversation-host"), text => {
+      $("#plan-description").value = text;
+      $("#plan-description").dispatchEvent(new Event("blur"));
+      $("#plan-description").focus();
+      message("Conversation brief added. Review the details before generating your plan.");
+    });
     let proposal = null, generating = false;
     let deadlineEdited = false;
     $("#plan-deadline").addEventListener("input", () => { deadlineEdited = true; });

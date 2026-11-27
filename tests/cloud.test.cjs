@@ -686,3 +686,57 @@ test("a second device restores the automatically saved private workspace on sign
   await second.page.evaluate(() => mock.changeAccount("bob"));
   assert.equal(await second.page.evaluate(() => POS.store.get().tasks.length), 0);
 });
+
+test("spoken project conversation retains context and creates a brief without saving tasks", async t => {
+  const { page } = await open(t, { viewport: { width: 390, height: 844 } });
+  await signIn(page);
+  await page.evaluate(() => {
+    window.SpeechRecognition = class {
+      start() { window.voiceMock = this; this.onstart(); }
+      stop() { this.onend?.(); }
+      abort() { window.voiceAborted = true; this.onend?.(); }
+    };
+  });
+  const requests = [];
+  await page.route("**/api/plan", async route => {
+    const body = route.request().postDataJSON(); requests.push(body);
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify({ reply: requests.length === 1 ? "What needs to be ready for the submission?" : "We can plan research, sketches and a presentation.", brief: "Typography project: research, sketches and a presentation. Deadline: 10 December 2026.", ready: requests.length > 1 }) });
+  });
+  await page.locator("#capture-btn").click();
+  await page.locator("#project-conversation summary").click();
+  await page.locator("#conversation-mic").click();
+  await page.evaluate(() => { voiceMock.onresult({ results: [[{ transcript: "I am making a typography project" }]] }); voiceMock.onend(); });
+  assert.equal(await page.locator("#conversation-input").inputValue(), "I am making a typography project");
+  assert.equal(requests.length, 0, "dictation is not sent without explicit approval");
+  await page.locator("#conversation-send").click();
+  await page.locator(".conversation-bubble.assistant").filter({ hasText: "What needs" }).waitFor();
+  await page.locator("#conversation-input").fill("Research, sketches and a presentation, due on 10 December");
+  await page.locator("#conversation-send").click();
+  await page.locator(".conversation-bubble.assistant").filter({ hasText: "We can plan" }).waitFor();
+  assert.equal(requests[1].messages.length, 3);
+  assert.equal(requests[1].messages[1].role, "assistant");
+  await page.locator("#conversation-use").click();
+  assert.match(await page.locator("#plan-description").inputValue(), /Typography project/);
+  assert.equal(await page.locator("#plan-deadline").inputValue(), "2026-12-10");
+  assert.equal(await page.evaluate(() => POS.store.get().tasks.length), 0);
+  await page.getByRole("button", { name: "Close task planner" }).click();
+  assert.equal(await page.evaluate(() => voiceAborted), true);
+});
+
+test("voice permission failure and unavailable recognition keep typing usable", async t => {
+  const { page } = await open(t);
+  await signIn(page);
+  await page.evaluate(() => { window.SpeechRecognition = class { start() { this.onerror({ error: "not-allowed" }); this.onend(); } abort() {} }; });
+  await page.locator("#capture-btn").click();
+  await page.locator("#project-conversation summary").click();
+  await page.locator("#conversation-mic").click();
+  assert.match(await page.locator("#conversation-status").innerText(), /permission was denied/);
+  assert.equal(await page.locator("#conversation-send").isEnabled(), true);
+  await page.getByRole("button", { name: "Close task planner" }).click();
+  await page.evaluate(() => { window.SpeechRecognition = undefined; window.webkitSpeechRecognition = undefined; });
+  await page.locator("#capture-btn").click();
+  await page.locator("#project-conversation summary").click();
+  assert.equal(await page.locator("#conversation-mic").isVisible(), false);
+  await page.locator("#conversation-input").fill("I can still describe my project");
+  assert.match(await page.locator("#conversation-voice-help").innerText(), /unavailable/);
+});

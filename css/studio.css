@@ -53,6 +53,20 @@ h1, h2, h3 { font-weight: 400; }
 .plan-dialog { min-width: 0; flex-shrink: 0; }
 .plan-step { grid-template-columns: 22px minmax(0, 1fr) 150px 84px 44px; }
 .plan-step label { min-width: 0; }
+.project-conversation { border: 1px solid var(--line); border-radius: var(--r-sm); margin-bottom: 28px; }
+.project-conversation>summary { min-height: 52px; padding: 14px 16px; cursor: pointer; font-size: 12px; }
+.project-conversation>summary>span { color: var(--ink-3); font-size: 10px; margin-left: 12px; }
+.conversation-body { padding: 0 16px 18px; }
+.conversation-log { max-height: 340px; overflow-y: auto; overscroll-behavior: contain; margin: 20px 0; padding-right: 6px; }
+.conversation-bubble { padding: 14px; margin: 12px 28px 12px 0; background: var(--sunken); border-radius: 4px; font-size: 12px; }
+.conversation-bubble.user { margin: 12px 0 12px 28px; background: var(--accent-soft); }
+.conversation-bubble>span { display: block; font-size: 10px; color: var(--ink-3); margin-bottom: 8px; }
+.conversation-bubble>p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.conversation-controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.conversation-controls .btn { font-size: 11px; }
+.conversation-status { min-height: 24px; font-size: 12px; margin: 12px 0; color: var(--ink-2); }
+.conversation-brief { border-top: 1px solid var(--line); padding-top: 18px; margin-top: 18px; }.conversation-brief>.btn { margin-top: 12px; }
+@media (max-width: 760px) { .conversation-body { padding-inline: 12px; }.conversation-controls>.btn { flex: 1 1 130px; }.project-conversation>summary>span { display: block; margin: 4px 0 0 15px; }.conversation-bubble { margin-right: 12px; }.conversation-bubble.user { margin-left: 12px; } }
 /* The supplied trial font has restricted numeral glyphs: dates and timers are interface data. */
 .focus-clock, .week-date, .archive-piece h3 { font-family: var(--font-mono); }
 .archive-piece h3 { font-size: 12px; line-height: 1.7; }

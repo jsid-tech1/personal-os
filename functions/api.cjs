@@ -18,7 +18,7 @@ async function handler(req, res) {
   const now = Date.now();
   for (const [key, value] of limits) if (value.until < now) limits.delete(key);
   const usage = limits.get(uid) || { count: 0, until: now + 60000 };
-  if (++usage.count > 5) return send(429, { error: "Wait a minute before generating another plan." });
+   if (++usage.count > 10) return send(429, { error: "Wait a minute before sending another request." });
   limits.set(uid, usage);
   try {
     let body = req.body;
@@ -27,7 +27,12 @@ async function handler(req, res) {
       for await (const chunk of req) { raw += chunk; if (Buffer.byteLength(raw) > 16000) return send(413, { error: "Description is too long." }); }
       body = JSON.parse(raw);
     }
-    if (typeof body.description !== "string" || body.description.trim().length < 8 || body.description.length > 5000 || !Number.isInteger(body.capacity) || body.capacity < 15 || body.capacity > 720) return send(400, { error: "Describe the work in 8–5000 characters and set a valid daily capacity." });
+    if (body?.mode === "conversation") {
+      const { converse, validateMessages } = require("./conversation.cjs");
+      try { validateMessages(body.messages); } catch (error) { return send(400, { error: error.message }); }
+      return send(200, await converse(body));
+    }
+    if (typeof body?.description !== "string" || body.description.trim().length < 8 || body.description.length > 5000 || !Number.isInteger(body.capacity) || body.capacity < 15 || body.capacity > 720) return send(400, { error: "Describe the work in 8–5000 characters and set a valid daily capacity." });
     const schema = { type: "object", additionalProperties: false, required: ["title", "steps"], properties: { title: { type: "string" }, steps: { type: "array", minItems: 1, maxItems: 50, items: { type: "object", additionalProperties: false, required: ["title", "duration"], properties: { title: { type: "string" }, duration: { type: "integer" } } } } } };
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST", signal: AbortSignal.timeout(45000),
