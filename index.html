@@ -11,6 +11,8 @@
 <meta name="theme-color" content="#f3f4f0">
 <title>Personal OS — Your progress takes shape</title>
 <script src="js/entry.js?v=mosaic1"></script><script src="js/theme.js?v=mosaic1"></script>
+<script src="js/intro.js?v=botanical1"></script>
+<script src="assets/vendor/gsap.min.js?v=3.12.5" defer></script>
 <script>document.documentElement.classList.add("m-enter");</script>
 <script>document.documentElement.classList.add('mo-js');setTimeout(()=>document.documentElement.classList.add('mo-safe'),2500)</script>
 <link rel="modulepreload" href="assets/moments/moments.js"><link rel="modulepreload" href="assets/moments/lib.js"><link rel="modulepreload" href="assets/moments/word-highlight/moment.js">
@@ -18,10 +20,32 @@
 <link rel="preload" as="font" href="assets/fonts/Milesdane%20Trial.otf" type="font/otf" crossorigin>
 <link rel="stylesheet" href="assets/motion/motion.css?v=mosaic1">
 <link rel="stylesheet" href="css/tokens.css?v=mosaic1"><link rel="stylesheet" href="css/base.css?v=mosaic1"><link rel="stylesheet" href="css/layout.css?v=mosaic1"><link rel="stylesheet" href="css/components.css?v=mosaic1"><link rel="stylesheet" href="css/screens.css?v=mosaic1"><link rel="stylesheet" href="css/welcome.css?v=mosaic1"><link rel="stylesheet" href="css/studio.css?v=mosaic1">
+<link rel="stylesheet" href="css/intro.css?v=botanical1">
 </head>
 <body>
 <!-- Client-directed botanical pixel identity. Milesdane Trial + DM Mono; original geometric artwork. -->
 <a class="skip-link" href="#welcome-main">Skip to content</a>
+<!-- Bang Motion: Progress takes shape · one continuous shot · task → fragments → botanical mosaic → live hero. -->
+<div class="site-intro" id="site-intro" role="dialog" aria-modal="true" aria-label="Personal OS introduction" aria-describedby="intro-description" hidden>
+  <p class="sr-only" id="intro-description">A ten-second animation: finished tasks become a botanical mosaic. Skip the introduction to use Personal OS.</p>
+  <div class="intro-paper" aria-hidden="true"><div class="intro-light"></div><div class="intro-texture"></div></div>
+  <div class="intro-stage" aria-hidden="true">
+    <div class="intro-world">
+      <div class="intro-plan">
+        <div class="intro-plan-head"><span class="pixel-mark small"><i></i><i></i><i></i><i></i></span><span>Personal OS</span><span>Today</span></div>
+        <p class="intro-plan-title">One thing at a time.</p>
+        <div class="intro-task"><span class="intro-check"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></span><span class="intro-task-name">Gather the references</span><span class="intro-duration">30 min</span></div>
+        <div class="intro-task"><span class="intro-check"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></span><span class="intro-task-name">Sketch a first direction</span><span class="intro-duration">45 min</span></div>
+        <svg class="intro-cursor" viewBox="0 0 32 40"><path d="M4 3v29l8-8 6 12 6-3-6-12 11-1Z"/></svg>
+      </div>
+      <div class="intro-mosaic"></div>
+      <p class="intro-statement"><span>Your progress</span><span>takes shape</span></p>
+    </div>
+  </div>
+  <div class="intro-controls"><button class="btn" id="intro-pause" type="button" aria-pressed="false">Pause intro</button><button class="btn" id="intro-skip" type="button">Skip intro <span aria-hidden="true">↗</span></button></div>
+  <div class="intro-progress" aria-hidden="true"><span></span></div>
+  <div class="intro-debug" id="intro-debug" hidden><label for="intro-scrub">Intro time</label><input id="intro-scrub" type="range" min="0" max="10" step="0.01" value="0"><output id="intro-clock" for="intro-scrub">0.00 / 10s</output></div>
+</div>
 <div class="welcome" id="welcome">
   <header class="welcome-header">
     <a class="brand-mark" href="#welcome-main" aria-label="Personal OS home"><span class="pixel-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="brand-word">Personal OS</span></a>
@@ -47,8 +71,9 @@
           </div>
         </div>
         <div class="hero-art" data-visual aria-label="Example of work becoming a botanical mosaic">
-          <div class="hero-art-grid" data-mosaic-demo></div>
+          <button class="hero-art-grid" data-mosaic-demo data-flower-interactive type="button" aria-label="Make the pixel flower bloom" aria-describedby="flower-hint"></button>
           <div class="hero-plan-fragment"><div class="fragment-head"><span class="fragment-dot"></span><span>A little progress, every day</span></div><div><span class="preview-check">✓</span><span>Gather the references</span><span>30 min</span></div><div><span class="preview-check">✓</span><span>Sketch a first direction</span><span>45 min</span></div><p>Two small steps. A little more colour.</p></div>
+          <p class="flower-hint" id="flower-hint">Move across the flower. Click or tap to bloom.</p>
           <span class="art-side-note">Work in progress is still progress.</span>
         </div>
       </div>
@@ -131,6 +156,7 @@
 <script src="js/planning.js?v=mosaic1"></script>
 <script src="js/mosaic.js?v=mosaic1"></script>
 <script src="js/ai.js?v=mosaic1"></script>
+<script src="js/goal-agent.js?v=deepseek1"></script>
 <script src="js/deepseek.js?v=mosaic1"></script>
 <script src="js/components.js?v=mosaic1"></script>
 <script src="js/onboarding.js?v=mosaic1"></script>

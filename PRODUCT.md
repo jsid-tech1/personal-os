@@ -41,7 +41,9 @@ CAPTURE → UNDERSTAND → BREAK DOWN → ORGANISE → SCHEDULE → EXECUTE → 
   explicit cloud backup.
 - **Data is isolated by Google user ID** in account-scoped localStorage. Signing out keeps the
   local copy but hides it. Switching accounts loads that account's own workspace.
-- **On-device** is the default assistant. Planning and rescheduling use local rules. In Capture,
+- **Goal Breakdown** offers a DeepSeek planning agent and an explicit on-device template option.
+  Only the goal, context and daily capacity go to DeepSeek; calendar scheduling and approval
+  validation run locally. Rescheduling uses local rules. In Capture,
   the user can opt in to DeepSeek for general chat, turn-based voice, and drafts. See
   [DeepSeek setup](DEEPSEEK.md). Workspace access is a separate choice.
 - **Cloud saving is manual.** One recovery snapshot per Google account in Cloud Firestore.

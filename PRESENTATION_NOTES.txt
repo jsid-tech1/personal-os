@@ -1,0 +1,68 @@
+PERSONAL OS — QUICK PRESENTATION ANSWERS
+
+WHAT IS IT?
+A daily planner for design students. Completed tasks reveal a weekly artwork.
+
+WHAT TECHNOLOGY DOES IT USE?
+HTML = structure. CSS = appearance. JavaScript = behaviour.
+Firebase = Google sign-in and cloud backup. No React.
+
+WHERE IS MY DATA?
+Work saves automatically in this browser, separately for each account.
+Cloud backup is manual. Clearing browser site data removes local work.
+
+DOES IT SYNC BETWEEN DEVICES?
+Not automatically in the current page. Save a cloud backup, then
+restore it on another device. Restore replaces that device's workspace.
+
+HOW DOES LOGIN WORK?
+Firebase handles Google sign-in. Each account has a unique ID.
+The app does not handle Google passwords.
+
+IS THE DATA SECURE?
+Cloud rules restrict access to the owning account when deployed correctly.
+Browser storage is not encrypted. Be careful on shared devices.
+
+IS THE ASSISTANT AI?
+Default planning uses local rules, not a language model.
+Optional DeepSeek chat needs user permission and a configured local server.
+
+WHERE IS THE SECRET AI KEY?
+On the server, not in browser code.
+The local DeepSeek server is not safe to publish as-is.
+
+IS THE ARTWORK AI-GENERATED?
+No. Code draws geometric flowers.
+Each completed task reveals up to eight coloured pieces.
+
+HOW WAS THE INTRO MADE?
+GSAP, a JavaScript animation library, moves task pieces into the artwork.
+It supports pause, skip and reduced motion.
+
+DOES IT WORK OFFLINE?
+An already-open, signed-in workspace can keep working locally.
+Fresh sign-in, cloud backup and DeepSeek need internet.
+
+HOW IS IT TESTED?
+Run automated checks with: npm test
+Real login, cloud backup and AI also need live-service checks.
+
+WHAT ARE THE LIMITS?
+No connected external calendar or automatic sync in the current page.
+Cloud backup keeps one snapshot, not a version history.
+
+WORDS TO KNOW
+Frontend = the part running in your browser.
+Backend = server-side services.
+localStorage = data saved in this browser.
+Firestore = Firebase's cloud database.
+API = how the app asks another service for something.
+
+IF YOU GET STUCK
+"A user action updates the data, saves it, and refreshes the screen.
+I'd check the code before claiming more."
+
+KEEPING THESE NOTES UPDATED
+Use short questions and 1–2 sentence answers. Explain new technical words.
+Separate working, optional and planned features.
+These notes reflect source code, not proof of a working live deployment.
