@@ -225,11 +225,7 @@
       if (previously && previously.focus) previously.focus();
       if (opts.onClose) opts.onClose();
     }
-<<<<<<< HEAD
     wrap.__posClose = close;
-=======
-    wrap._close = close;
->>>>>>> 196832040d9384cac7bfb875f089b4300511be07
     wrap.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", close));
     document.addEventListener("keydown", onKey);
     setTimeout(() => {

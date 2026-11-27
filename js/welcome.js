@@ -15,18 +15,22 @@
       control.disabled = opening;
       control.setAttribute("aria-busy", String(opening || status.busy === "loading"));
     });
-    button.disabled = opening;
+    button.disabled = opening || !navigator.onLine;
     label.textContent = status.busy === "signing-in" ? "Google window is open…" :
       status.busy === "redirecting" ? "Opening Google…" :
-      status.busy === "loading" ? "Connecting to Google…" : !status.ready ? "Reconnect to Google" : "Continue with Google";
+      status.busy === "loading" ? "Connecting to Google…" :
+      !navigator.onLine ? "Reconnect to sign in" :
+      !status.ready ? "Reconnect to Google" : "Continue with Google";
     progress.textContent = status.busy === "loading" ? "Checking your sign-in…" :
       status.busy === "signing-in" ? "Choose your account in the Google window. If you closed it, this button will reset shortly." :
       status.busy === "redirecting" ? "Taking you to Google in this tab…" :
-      status.user ? "Opening your workspace…" : !status.ready ? "Google sign-in is unavailable right now." : "";
+      status.user ? "Opening your workspace…" :
+      !navigator.onLine ? "You’re offline. Google sign-in needs a connection; your saved work stays on this device." :
+      !status.ready ? "Google sign-in is unavailable right now." : "";
     error.textContent = status.error;
     error.hidden = !status.error;
     retry.hidden = status.ready || status.busy === "loading";
-    retry.disabled = !!status.busy;
+    retry.disabled = !!status.busy || !navigator.onLine;
     document.getElementById("welcome-redirect").hidden = status.errorCode !== "auth/popup-blocked";
   }
 

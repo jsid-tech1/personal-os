@@ -1,8 +1,4 @@
 {
-<<<<<<< HEAD
-  "firestore": {
-    "rules": "firestore.rules"
-=======
   "hosting": {
     "public": "dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
@@ -21,6 +17,5 @@
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
->>>>>>> 196832040d9384cac7bfb875f089b4300511be07
   }
 }

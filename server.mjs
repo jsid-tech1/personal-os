@@ -10,8 +10,11 @@ const root = dirname(fileURLToPath(import.meta.url));
 const base = "https://api.deepseek.com";
 const mime = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
-  ".css": "text/css; charset=utf-8", ".ttf": "font/ttf", ".woff2": "font/woff2",
+  ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8",
+  ".otf": "font/otf", ".ttf": "font/ttf", ".woff": "font/woff", ".woff2": "font/woff2",
   ".svg": "image/svg+xml", ".png": "image/png", ".webp": "image/webp",
+  ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".ico": "image/x-icon",
+  ".mp3": "audio/mpeg", ".mp4": "video/mp4",
 };
 const policy = [
   "You are the Personal OS conversation assistant. Answer general questions normally.",
@@ -213,7 +216,7 @@ export function createPersonalServer({ key = "", fetchImpl = fetch } = {}) {
         return;
       }
       const asset = url.pathname === "/" ? "index.html" : decodeURIComponent(url.pathname.slice(1));
-      if (!["GET", "HEAD"].includes(req.method) || !/^(?:index\.html|(?:js|css|assets)\/[a-z0-9/_\-.]+)$/i.test(asset) ||
+      if (!["GET", "HEAD"].includes(req.method) || !/^(?:index\.html|(?:js|css|assets)\/[a-z0-9/_\- .]+)$/i.test(asset) ||
           asset.split("/").some((part) => part.startsWith(".")) || !mime[extname(asset)]) {
         throw new RequestError(404, "Not found.");
       }
@@ -236,6 +239,6 @@ export function createPersonalServer({ key = "", fetchImpl = fetch } = {}) {
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const port = Number(process.env.PORT || 8787);
   createPersonalServer({ key: process.env.DEEPSEEK_API_KEY?.trim() }).listen(port, "127.0.0.1", () => {
-    console.log(`Personal OS: http://127.0.0.1:${port}/`);
+    console.log(`Personal OS: http://localhost:${port}/`);
   });
 }

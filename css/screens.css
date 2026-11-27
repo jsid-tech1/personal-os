@@ -160,53 +160,11 @@
    Today
    ========================================================= */
 
-<<<<<<< HEAD
 .day-sheet { max-width: 1160px; }
 .day-head { margin-bottom: var(--s5); }
 .day-head .page-title { font-size: 3.5rem; letter-spacing: -0.025em; }
 .day-date { display: block; margin-top: 6px; color: var(--ink-2); }
 .day-layout {
-=======
-.focus-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 18px;
-  border-bottom: 1px solid var(--line-soft);
-  transition: background var(--t-fast) var(--ease);
-}
-.focus-row:last-child { border-bottom: 0; }
-.focus-row:hover { background: var(--surface-hover); }
-.focus-row .check { flex: 1; align-items: center; min-width: 0; }
-.focus-row .check-label { min-width: 0; }
-.focus-index {
-  width: 20px;
-  flex: none;
-  font-size: 11px;
-  color: var(--ink-4);
-  letter-spacing: 0.02em;
-}
-.focus-row .focus-title {
-  display: block;
-  font-size: 13.5px;
-  font-weight: 450;
-  letter-spacing: -0.006em;
-  line-height: 1.35;
-}
-.focus-row .row-meta { margin-top: 3px; gap: 7px; }
-.focus-dur {
-  font-size: 10px;
-  color: var(--ink-3);
-  letter-spacing: -0.01em;
-  flex: none;
-}
-.focus-row .icon-btn { color: var(--ink-4); }
-.focus-row:hover .icon-btn { color: var(--ink-2); }
-.focus-row .icon-btn:hover { color: var(--accent); background: var(--accent-wash); }
-
-.timeline { padding: 4px 0; }
-.tl-row {
->>>>>>> 196832040d9384cac7bfb875f089b4300511be07
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(220px, 27%);
   grid-template-areas: "priorities margin" "schedule margin" "later margin";
@@ -1318,8 +1276,7 @@
   transition: background var(--t-fast) var(--ease);
 }
 .planner-task:last-child { border-bottom: 0; }
-<<<<<<< HEAD
-.planner-task:hover { background: #f6f6f2; }
+.planner-task:hover { background: var(--surface-hover); }
 .planner-task.is-proposed {
   margin: var(--s1) var(--s2);
   padding-inline: 10px;
@@ -1327,9 +1284,6 @@
   border: 1px dashed var(--accent);
   border-radius: var(--r-sm);
 }
-=======
-.planner-task:hover { background: var(--surface-hover); }
->>>>>>> 196832040d9384cac7bfb875f089b4300511be07
 .planner-task .check { flex: 1; align-items: center; min-width: 0; }
 .planner-time {
   width: 58px;
@@ -2524,4 +2478,77 @@
   .review-row { gap: 8px; }
   .composer-files { padding-left: 10px; padding-right: 10px; }
   .data-actions .btn { flex: 1 1 auto; }
+}
+
+/* =========================================================
+   First-run guide
+   ========================================================= */
+
+.first-use { margin-bottom: var(--s6); }
+.first-use-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s4);
+  flex-wrap: wrap;
+}
+.first-use-step {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.first-use h2 { margin-top: 4px; }
+.first-use-head .field-help { max-width: 58ch; margin-top: 6px; }
+.first-task-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 160px 150px auto;
+  gap: var(--s3);
+  align-items: end;
+  margin-top: var(--s5);
+}
+.first-task-form .btn { min-height: 40px; }
+.first-use-progress {
+  display: grid;
+  gap: var(--s2);
+  margin-top: var(--s4);
+  padding: 0;
+  list-style: none;
+}
+.first-use-progress li {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 38px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.first-use-progress li:last-child { border-bottom: 0; }
+.first-use-number {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.first-use-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  margin-top: var(--s4);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line-soft);
+}
+
+@media (max-width: 760px) {
+  .first-task-form { grid-template-columns: minmax(0, 1fr); }
+  .first-task-form .btn { width: 100%; }
+  .first-use-foot { align-items: stretch; }
 }

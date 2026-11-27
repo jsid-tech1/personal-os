@@ -11,7 +11,7 @@
   let stopAuthObserver = null;
   let accountVersion = 0;
   const listeners = new Set();
-  const status = { ready: false, user: null, busy: null, error: "", errorCode: "", lastSaved: null, analytics: "loading" };
+  const status = { ready: false, user: null, busy: null, error: "", errorCode: "", lastSaved: null };
 
   function withTimeout(promise, milliseconds, text) {
     let timer;
@@ -56,6 +56,8 @@
       "auth/popup-closed-by-user": "Sign-in was cancelled. Choose Continue with Google to try again.",
       "auth/cancelled-popup-request": "Another sign-in window is already open. Finish that sign-in first.",
       "auth/network-request-failed": "Google sign-in could not connect. Check your connection and try again.",
+      "auth/web-storage-unsupported": "This browser blocks the storage Google sign-in needs. Allow site data or try another browser.",
+      "auth/operation-not-supported-in-this-environment": "Google sign-in cannot open here. Open Personal OS in a regular browser tab.",
       "auth/invalid-api-key": "The Firebase API key was rejected. Check js/firebase-config.js against Firebase Console.",
       "permission-denied": "Firestore access was denied. Publish firestore.rules for personal-os-12b89 and sign in again.",
       "failed-precondition": "Create the default Cloud Firestore database in Firebase Console, then try again.",
@@ -124,7 +126,7 @@
     update({ busy: "loading", error: "", errorCode: "" });
     starting = (async () => {
       try {
-        if (location.protocol === "file:") throw new Error("Open http://localhost:8000 to use Firebase. Local saving works from disk.");
+        if (location.protocol === "file:") throw new Error("Open Personal OS from its local server (node server.mjs) to use Google sign-in. Your saved work is still on this device.");
         const retry = attempt > 1 ? "?retry=" + attempt : "";
         const [appSDK, authModule] = await withTimeout(Promise.all([
           import(SDK + "firebase-app.js"),
@@ -141,34 +143,21 @@
         if (stopAuthObserver) stopAuthObserver();
         stopAuthObserver = authSDK.onAuthStateChanged(auth, (user) => {
           accountVersion++;
-          update({ user: user ? { uid: user.uid, email: user.email, name: user.displayName } : null, lastSaved: null });
+          update({
+            user: user ? { uid: user.uid, email: user.email, name: user.displayName, photoURL: user.photoURL || "" } : null,
+            lastSaved: null,
+          });
         });
         update({ ready: true, busy: null, error: "", errorCode: "" });
-        // Analytics failure must never interrupt sign-in, backup, or local work.
-        initAnalytics();
         return true;
       } catch (error) {
-        update({ ready: false, busy: null, error: message(error), errorCode: error.code || "", analytics: "unavailable" });
+        update({ ready: false, busy: null, error: message(error), errorCode: error.code || "" });
         return false;
       } finally {
         starting = null;
       }
     })();
     return starting;
-  }
-
-  async function initAnalytics() {
-    try {
-      const analyticsSDK = await import(SDK + "firebase-analytics.js");
-      if (await analyticsSDK.isSupported()) {
-        analyticsSDK.getAnalytics(app);
-        update({ analytics: "enabled" });
-      } else {
-        update({ analytics: "unavailable" });
-      }
-    } catch (error) {
-      update({ analytics: "unavailable" });
-    }
   }
 
   function signIn() {
@@ -183,6 +172,7 @@
 
   function signOut() {
     return run("signing-out", async () => {
+      if (!auth || !auth.currentUser) return;
       await authSDK.signOut(auth);
       // Local workspace is deliberately retained. Signing out never deletes work.
     });

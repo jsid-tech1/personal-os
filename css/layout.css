@@ -477,3 +477,16 @@
 @media (min-width: 961px) {
   .app.is-focus .topbar { padding-left: var(--page); }
 }
+
+.storage-error {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  border-radius: 0;
+  padding: 9px var(--page);
+  font-size: 12px;
+}
+.storage-error span { flex: 1 1 240px; }
+.storage-error .btn { min-height: 32px; }

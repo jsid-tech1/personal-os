@@ -140,58 +140,13 @@
           </div>
         </header>
 
-<<<<<<< HEAD
+        ${POS.onboarding.html()}
+
         <div class="day-layout">
           <section class="day-priorities" aria-labelledby="day-priorities">
             <div class="day-section-head">
               <h2 id="day-priorities" tabindex="-1">${priorities.length ? "Start here" : "Priorities"}</h2>
               <span class="day-measure mono">${U.plural(priorities.length, "priority", "priorities")}</span>
-=======
-      ${POS.onboarding.html()}
-
-      <div class="grid grid-12">
-        <div class="col-8 rail-stack">
-
-          <section class="panel" aria-labelledby="focus-h">
-            <div class="panel-head">
-              <div class="row gap-3">
-                <h2 id="focus-h">Your focus today</h2>
-                <span class="tag tag-accent tag-mono">${priorities.length} PRIORITIES</span>
-              </div>
-              <span class="meta">${U.fmtDur(priorities.reduce((n, t) => n + t.duration, 0))} of work</span>
-            </div>
-            <div class="rows" id="focus-rows">
-              ${priorities.length
-                ? priorities.map((t, i) => `
-                  <div class="focus-row" data-task="${t.id}">
-                    <span class="focus-index serif">${String(i + 1).padStart(2, "0")}</span>
-                    <label class="check ${t.done ? "is-done" : ""}">
-                      <input type="checkbox" data-act="toggle-task" data-id="${t.id}" aria-label="Complete ${esc(t.title)}" />
-                      <span class="check-label grow">
-                        <span class="focus-title">${esc(t.title)}</span>
-                        <span class="row-meta">
-                          ${t.projectId ? ui.projectTag(t.projectId) : '<span class="tag tag-outline">Personal</span>'}
-                          <span class="sep">·</span>
-                          <span>${t.start != null ? U.fmtMin(t.start) : "Unscheduled"}</span>
-                          ${t.date < today ? `<span class="sep">·</span><span class="danger">${Math.abs(U.diffDays(t.date, today))}d late</span>` : ""}
-                        </span>
-                      </span>
-                    </label>
-                    <span class="mono focus-dur">${U.fmtDur(t.duration)}</span>
-                    <button class="icon-btn icon-btn-sm" data-act="focus-task" data-id="${t.id}" aria-label="Focus on ${esc(t.title)}" title="Focus">
-                      ${icon("play")}
-                    </button>
-                  </div>`).join("")
-                : ui.emptyState("Nothing is on fire", "No open tasks for today. Add one, or bring something forward from this week.",
-                    `<button class="btn btn-sm" data-act="add-task">${icon("plus")} Add a task</button>`)}
-            </div>
-            <div class="panel-foot">
-              <div class="spread" style="margin-bottom:7px">
-                <span style="font-size:11.5px;color:var(--ink-3)">Day load</span>
-                <span class="mono" style="font-size:10.5px;color:var(--ink-2)">${hours}h / ${Math.round(capacity / 60)}h</span>
-              </div>
-              ${ui.meter(Math.round((stats.plannedMin / capacity) * 100))}
->>>>>>> 196832040d9384cac7bfb875f089b4300511be07
             </div>
             ${priorities.length ? `<ol class="day-priority-list">${priorities.map((t, i) => priorityHTML(t, i === 0)).join("")}</ol>`
               : `<p class="day-empty">${stats.total ? "All of today’s tasks are complete." : "No tasks are planned for today."}</p>`}
@@ -228,7 +183,6 @@
               </div>
               ${deadlines.length ? `<ul class="day-deadlines">${deadlines.map((p) => {
                 const days = U.diffDays(p.deadline, today);
-<<<<<<< HEAD
                 return `<li><a href="#/project/${encodeURIComponent(p.id)}">
                   ${projectName(p.id)}
                   <time class="mono ${days < 0 ? "danger" : days <= 3 ? "warning" : ""}" datetime="${esc(p.deadline)}">${days < 0 ? "Overdue" : days === 0 ? "Today" : U.fmtDate(p.deadline, "short")}</time>
@@ -241,34 +195,8 @@
                 <a class="day-link" href="#/habits">All habits ${icon("chevron-right")}</a>
               </div>
               ${habits.length ? `<ul class="day-habits">${habits.map((h) => {
-=======
-                return `<a class="row-item" href="#/project/${p.id}">
-                  <span class="pdot" style="--tone:var(--p-${p.color})"></span>
-                  <div class="grow">
-                    <div class="row-title" style="font-size:12.5px">${esc(p.name)}</div>
-                    <div class="row-meta">
-                      <span class="mono">${prog.done}/${prog.total}</span>
-                      <span class="sep">·</span>
-                      <span class="${days <= 3 ? "warning" : ""}">${days === 0 ? "due today" : days < 0 ? "overdue" : days + "d left"}</span>
-                    </div>
-                  </div>
-                  <div style="width:54px">${ui.meter(prog.pct, p.color)}</div>
-                </a>`;
-              }).join("") || ui.emptyState("No project deadlines", "Add a project when you have a larger piece of work to plan.", '<a class="btn btn-sm" href="#/projects">Add a project</a>')}
-            </div>
-          </section>
-
-          <section class="panel" aria-labelledby="hab-h">
-            <div class="panel-head">
-              <h2 id="hab-h">Habits</h2>
-              <a class="btn btn-ghost btn-sm" href="#/habits">All</a>
-            </div>
-            <div class="rows">
-              ${habits.map((h) => {
->>>>>>> 196832040d9384cac7bfb875f089b4300511be07
                 const done = store.habitDone(h);
                 const streak = store.habitStreak(h);
-<<<<<<< HEAD
                 return `<li><label class="check">
                   <input type="checkbox" ${done ? "checked" : ""} data-act="toggle-habit" data-id="${esc(h.id)}" />
                   <span>${esc(h.name)}</span>
@@ -276,21 +204,6 @@
               }).join("")}</ul>` : '<p class="day-measure">No habits to check off.</p>'}
             </section>
           </aside>
-=======
-                return `<div class="row-item habit-row">
-                  <label class="check ${done ? "is-done" : ""}">
-                    <input type="checkbox" ${done ? "checked" : ""} data-act="toggle-habit" data-id="${h.id}" aria-label="${esc(h.name)}" />
-                    <span class="check-label grow"><span class="row-title" style="font-size:12.5px">${esc(h.name)}</span></span>
-                  </label>
-                  <div class="habit-dots" aria-hidden="true">
-                    ${week.map((d) => `<i class="${d.done ? "on" : ""}"></i>`).join("")}
-                  </div>
-                  <span class="mono" style="font-size:10px;color:var(--ink-3);min-width:22px;text-align:right">${streak}d</span>
-                </div>`;
-              }).join("") || ui.emptyState("No habits yet", "Choose a routine you want to keep.", '<a class="btn btn-sm" href="#/habits">Add a habit</a>')}
-            </div>
-          </section>
->>>>>>> 196832040d9384cac7bfb875f089b4300511be07
 
           <section class="day-later" aria-labelledby="day-later">
             <div class="day-section-head">
@@ -325,12 +238,9 @@
   function destroy() {
     clearInterval(clock);
     clock = null;
+    if (POS.onboarding) POS.onboarding.destroy();
   }
 
   POS.views = POS.views || {};
-<<<<<<< HEAD
   POS.views.today = { render, destroy };
-=======
-  POS.views.today = { render, destroy: () => POS.onboarding.destroy() };
->>>>>>> 196832040d9384cac7bfb875f089b4300511be07
 })();

@@ -42,20 +42,8 @@
   };
 
   const load = () => {
-    try {
-      const raw = !localStorage.getItem(KEY + ":owner") && localStorage.getItem(KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && parsed.version === 1 && Array.isArray(parsed.tasks)) {
-          state = parsed;
-          state.plans = state.plans || {};
-          state.proposals = state.proposals || {};
-          return;
-        }
-      }
-    } catch (err) {
-      console.warn("Personal OS: starting fresh", err);
-    }
+    // Nothing is read before Google sign-in. Each account loads its own keyed
+    // workspace in activateAccount; any older anonymous data is left untouched.
     state = POS.buildEmpty();
   };
 
@@ -71,12 +59,6 @@
     try {
       const saved = localStorage.getItem(nextKey);
       if (saved && !next) next = POS.cloud.validateWorkspace(JSON.parse(saved));
-      // Adopt an existing pre-account workspace once. Keep the original as a recovery copy.
-      const owner = localStorage.getItem(KEY + ":owner");
-      if (!next && !account && !owner && localStorage.getItem(KEY)) {
-        next = POS.cloud.validateWorkspace(state);
-        localStorage.setItem(KEY + ":owner", user.uid);
-      }
     } catch (error) {
       // Do not replace an unreadable saved workspace on sign-in.
       throw new Error("Your saved workspace could not be opened. Export or recover this browser's site data before trying again.");
@@ -103,7 +85,7 @@
   };
 
   const reset = () => {
-    state = POS.buildSeed();
+    state = POS.buildEmpty(POS.cloud.getStatus().user || {});
     persist();
     emit("reset");
   };
