@@ -12,6 +12,17 @@ test("scheduler rejects impossible workload instead of silently overloading tomo
   assert.throws(() => P.schedule([{ title: "Too long", duration: 80 }], options), /Split longer/);
   assert.throws(() => P.schedule([{ title: "One", duration: 50 }, { title: "Two", duration: 50 }], { ...options, deadline: options.start }), /does not fit/);
 });
+test("an AI breakdown stays editable when there is not room for every step; only a complete schedule can be approved", () => {
+  const friday = { ...options, deadline: options.start };
+  const existing = [{ date: options.start, duration: 20 }];
+  const steps = [{ title: "Block out a level", duration: 30 }, { title: "Test the player controller", duration: 30 }];
+  const draft = P.scheduleDraft(steps, friday, existing);
+  assert.deepEqual(draft, [{ ...steps[0], date: options.start }, { ...steps[1], date: "" }]);
+  assert.throws(() => P.validate(draft, friday, existing), /available working day/);
+  const rebalanced = P.scheduleDraft(draft, options, existing);
+  assert.equal(rebalanced[1].date, "2026-11-30");
+  assert.equal(P.validate(rebalanced, options, existing), true);
+});
 test("approval validates edited dates, duration, order and capacity", () => {
   const step = { title: "Research", duration: 45, date: "2026-11-27" };
   assert.throws(() => P.validate([{ ...step, date: "2026-11-28" }], options), /available working day/);

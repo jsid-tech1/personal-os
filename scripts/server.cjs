@@ -4,18 +4,18 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 if (require("node:fs").existsSync(path.join(root, ".env"))) process.loadEnvFile(path.join(root, ".env"));
+const api = new Map([
+  ["/api/plan", require("../functions/api.cjs").handler],
+  ["/api/live", require("../functions/live.cjs").handler],
+]);
 const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".png": "image/png", ".svg": "image/svg+xml", ".ttf": "font/ttf", ".woff2": "font/woff2" };
 const server = http.createServer(async (req, res) => {
   res.setHeader("Cache-Control", "no-store, max-age=0");
   res.setHeader("X-Content-Type-Options", "nosniff");
-  const api = {
-    "/api/plan": () => require("../functions/api.cjs"),
-    "/api/live": () => require("../functions/live.cjs"),
-  };
-  const apiPath = new URL(req.url, "http://localhost").pathname;
-  if (api[apiPath]) {
-    try { await api[apiPath]().handler(req, res); }
-    catch { res.writeHead(503, { "Content-Type": "application/json" }).end(JSON.stringify({ error: "The AI server needs configuration. See docs/AI_AND_SYNC_SETUP.md." })); }
+  const handler = api.get(new URL(req.url, "http://localhost").pathname);
+  if (handler) {
+    try { await handler(req, res); }
+    catch { if (!res.headersSent) res.writeHead(500, { "Content-Type": "application/json" }).end(JSON.stringify({ error: "The server could not finish this request. Try again." })); }
     return;
   }
   if (!["GET", "HEAD"].includes(req.method)) { res.writeHead(405).end(); return; }

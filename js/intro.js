@@ -90,8 +90,10 @@
       const destination = target?.getBoundingClientRect();
       const left = (innerWidth - W * fit) / 2;
       const top = (innerHeight - H * fit) / 2;
-      const toX = destination ? (destination.left - left) / fit - mx : 0;
-      const toY = destination ? (destination.top - top) / fit - my : 0;
+      // Resolve the dock when the shot reaches it: late fonts/auth notices may
+      // change the live hero's position after the opening frame was measured.
+      const toX = () => target ? (target.getBoundingClientRect().left - left) / fit - mx : 0;
+      const toY = () => target ? (target.getBoundingClientRect().top - top) / fit - my : 0;
       const toScale = destination?.width ? destination.width / (size * fit) : .8;
       const gap = target ? parseFloat(getComputedStyle(target).columnGap) / (toScale * fit) || 3 : 3;
       const tileSize = (size - gap * 19) / 20;
@@ -102,7 +104,7 @@
       });
 
       tl = gsap.timeline({ paused: true, onUpdate: update, onComplete: finish });
-      tl.set(world, { x: 0, y: 0, scale: 1.18, transformOrigin: "50% 50%" }, 0)
+      tl.set(world, { x: 0, y: 0, scale: portrait ? 1.06 : 1.18, transformOrigin: "50% 50%" }, 0)
         .set(plan, { opacity: 1, x: 0, y: 0, scale: 1 }, 0)
         .set(mosaic, { x: 0, y: 0, scale: 1, opacity: 1 }, 0)
         .set($(".intro-paper"), { opacity: 1 }, 0)
@@ -253,6 +255,7 @@
       update();
       // A restored authenticated session should go straight to work, never wait for branding.
       unsubscribe = window.POS.cloud?.subscribe(status => { if (status.user) finish(); });
+      if (window.POS.cloud?.getStatus().user) finish();
       if (ended) unsubscribe?.();
     } catch (error) {
       finish();

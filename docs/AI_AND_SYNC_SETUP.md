@@ -4,7 +4,7 @@
 
 In Add task, expand **Talk through your project**. Send typed messages or use **Start microphone** to dictate, review the transcript, then send it. The AI asks contextual follow-ups and maintains a running editable brief. **Use this brief for my plan** copies it into the planning form; generation, review and explicit approval still happen separately. No conversation message creates tasks by itself.
 
-Conversation uses the same authenticated `/api/plan` endpoint with `mode: conversation` and the existing server-only OpenAI configuration. It is bounded to eight exchanges and ten total API requests/user/minute per warm instance. The transcript is ephemeral, cleared on closing the planner, and not written to the account database. Only messages explicitly sent go to OpenAI. Browser dictation may use the browser vendor's remote speech service. Supported browsers require microphone permission and HTTPS or localhost; unsupported/denied/error cases retain typing. **Read reply aloud** and **Stop reading** provide optional browser speech playback. Closing the planner or signing out stops capture/playback and aborts pending requests. Automated voice tests simulate recognition; real microphone accuracy is device/browser-dependent.
+Conversation uses the same authenticated `/api/plan` endpoint as task breakdowns, with `mode: conversation` and the server's DeepSeek key. It is bounded to eight exchanges and shares the planner's five requests per user per minute per warm instance. The transcript is cleared on closing the planner and not written to the account database. Only submitted messages go to DeepSeek. Browser dictation may use the browser vendor's remote speech service. Supported browsers require microphone permission and HTTPS or localhost; unsupported/denied/error cases retain typing. **Read reply aloud** and **Stop reading** provide optional browser speech playback.
 
 Latest typography uses Neue Montreal for interface copy and numeric information, retaining MilesDane display headings. The supplied Neue Montreal demo archive contains no license document; verify the appropriate license before publication.
 
@@ -17,7 +17,9 @@ The existing Firebase Google sign-in remains real. Account-local task plans, cal
 1. `npm install` and `npm install --prefix functions`.
 2. Copy `.env.example` to `.env` if you do not already have one. Set `DEEPSEEK_API_KEY` and optionally `DEEPSEEK_MODEL` (default `deepseek-flash`). Do not overwrite existing secrets.
 3. Firebase Admin verifies Google sign-in tokens against `GCLOUD_PROJECT` (default `personal-os-12b89`). Token verification needs public signing certificates, not a service-account file. If you use Admin operations that require credentials, keep that JSON **outside this repository**. Never place a service account or AI key in `js/firebase-config.js`, browser storage, or a public directory.
-4. Restart `npm run dev` and open `http://127.0.0.1:8000`. Do not use a generic static file server: it cannot run the AI endpoint and may expose `.env`.
+4. Restart `npm run dev` and open the local URL it prints (`PORT` in `.env`, or `8000` by default). Do not use a generic static file server: it cannot run the AI endpoint and may expose `.env`.
+
+In **Add task**, describe the project, choose your deadline and working days, and click **Generate AI plan**. DeepSeek receives the description and daily capacity. Personal OS assigns dates locally. If a step cannot fit, it stays in the review without a date. Adjust the deadline or steps and choose **Rebalance dates** without another API call. **Approve & schedule** saves only a valid schedule.
 
 Open **Goal Breakdown**, describe the goal and context, choose the target date and daily capacity, leave **DeepSeek agent** selected, then choose **Draft the plan**. DeepSeek proposes named milestones and actionable tasks with minute estimates. Choose **On-device templates** for a local, non-AI alternative. Edit the draft, then **Approve & schedule** to save it.
 
@@ -45,7 +47,7 @@ npx firebase-tools functions:secrets:set DEEPSEEK_API_KEY --project personal-os-
 npm run deploy
 ```
 
-The function `plan` deploys to `us-central1`; Hosting rewrites `/api/plan` to it. Runtime identity uses Firebase-managed credentials. The API rejects unapproved browser origins, checks Firebase ID tokens, bounds input/output, has a 45-second model timeout, limits each warm instance to ten requests/user/minute and caps deployment at three instances. For broader public use, add App Check, a distributed quota/budget control and monitoring; the warm-instance limiter alone is not a global abuse-protection service.
+The function `plan` deploys to `us-central1`; Hosting rewrites `/api/plan` to it. Runtime identity uses Firebase-managed credentials. The API rejects unapproved browser origins, checks Firebase ID tokens, bounds input/output, has a 45-second model timeout, limits each warm instance to five requests/user/minute and caps deployment at three instances. For broader public use, add App Check, a distributed quota/budget control and monitoring; the warm-instance limiter alone is not a global abuse-protection service.
 
 ## Automatic sync and rules
 
