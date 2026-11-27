@@ -1,239 +1,242 @@
-/* Today — the morning decision surface. */
+/* Today — a day sheet for decisions, work, and the time between. */
 (function () {
   "use strict";
   const POS = window.POS;
   const U = POS.util;
-  const { icon, esc } = { icon: U.icon, esc: U.escapeHTML };
+  const { icon, escapeHTML: esc } = U;
   const store = POS.store;
   const ui = POS.ui;
+  let clock = null;
+
+  const time = (min) => `<time class="mono" datetime="${U.hhmmOf(min % 1440)}">${U.fmtMin(min)}</time>`;
+  const taskCheck = (t) => `<label class="check day-check">
+    <input type="checkbox" data-act="toggle-task" data-id="${esc(t.id)}" ${t.done ? "checked" : ""}
+      aria-label="${t.done ? "Mark incomplete" : "Mark complete"}: ${esc(t.title)}" />
+  </label>`;
+  const projectName = (id) => {
+    const p = id ? store.project(id) : null;
+    return p ? `<span class="day-project tone-${esc(p.color)}"><i class="pdot" aria-hidden="true"></i>${esc(p.name)}</span>` : "<span>Personal</span>";
+  };
+
+  function priorityHTML(t, lead = false) {
+    return `<li class="day-priority${lead ? " day-priority-lead" : ""}">
+      ${taskCheck(t)}
+      <div class="day-task-body">
+        <button class="day-task-title" data-act="open-task" data-id="${esc(t.id)}">${esc(t.title)}</button>
+        <div class="day-task-meta">${projectName(t.projectId)}
+          <span class="mono">${U.fmtDur(t.duration)}</span>
+          ${t.start == null ? "<span>Unscheduled</span>" : time(t.start)}
+        </div>
+      </div>
+      ${lead
+        ? `<a class="btn btn-accent day-focus" href="#/focus?task=${encodeURIComponent(t.id)}">${icon("play")} Start focus</a>`
+        : `<a class="icon-btn day-focus-more" href="#/focus?task=${encodeURIComponent(t.id)}" aria-label="Start focus: ${esc(t.title)}" title="Start focus">${icon("play")}</a>`}
+    </li>`;
+  }
+
+  function scheduleHTML(rows, now) {
+    const clockRow = `<li class="day-now">${time(now)}<span>Now</span></li>`;
+    if (!rows.length) return `<ol class="day-agenda">${clockRow}</ol><p class="day-empty">No tasks or events on the schedule yet.</p>`;
+    let end = null;
+    let clockShown = false;
+    const items = rows.map(({ kind, item, start, stop }) => {
+      let before = "";
+      if (!clockShown && end != null && now <= end) {
+        before += clockRow;
+        clockShown = true;
+      }
+      if (end != null && start - end >= 15) {
+        before += `<li class="day-gap">${time(end)}<span>${U.fmtDur(start - end)} open</span></li>`;
+      }
+      if (!clockShown && now <= start) {
+        before += clockRow;
+        clockShown = true;
+      }
+      const task = kind === "task";
+      const proposal = kind === "proposal";
+      end = Math.max(end ?? stop, stop);
+      return `${before}<li class="day-agenda-row${task && item.done ? " is-done" : ""}">
+        <div class="day-agenda-time">${time(start)}${time(stop)}</div>
+        <div class="day-slot${proposal ? " is-proposed" : task ? "" : " is-event"}">
+          <div class="day-task-body">
+            ${task
+              ? `<button class="day-task-title" data-act="open-task" data-id="${esc(item.id)}">${esc(item.title)}</button>`
+              : `<span class="day-slot-title">${esc(item.title)}</span>`}
+            <div class="day-task-meta">${task || proposal
+              ? `${projectName(item.projectId)}<span class="mono">${U.fmtDur(stop - start)}</span>`
+              : `<span>${item.fixed ? "Fixed event" : "Calendar event"}</span>${item.location ? `<span>${esc(item.location)}</span>` : ""}`}</div>
+          </div>
+          ${proposal ? '<span class="schedule-proposed-label">Proposed</span>' : task ? taskCheck(item) : ""}
+        </div>
+      </li>`;
+    });
+    return `<ol class="day-agenda">${items.join("")}${clockShown ? "" : clockRow}</ol>`;
+  }
+
+  function updateSchedule(page, today, todayTasks, events) {
+    const now = U.nowMinutes();
+    const plan = POS.ai.draftDay(today, { notBefore: now });
+    const placed = plan.placed.filter((p) => !p.kept).sort((a, b) => a.start - b.start);
+    const first = placed[0];
+    const suggestion = first ? store.task(first.taskId) : null;
+    const schedule = todayTasks.filter((t) => t.start != null)
+      .map((t) => ({ kind: "task", item: t, start: t.start, stop: t.start + t.duration }))
+      .concat(events.map((e) => ({ kind: "event", item: e, start: e.start, stop: e.end })));
+    if (suggestion) schedule.push({ kind: "proposal", item: suggestion, start: first.start, stop: first.start + first.duration });
+    schedule.sort((a, b) => a.start - b.start || a.stop - b.stop);
+    page.querySelector(".day-agenda-content").innerHTML = scheduleHTML(schedule, now);
+    page.querySelector(".day-plan-note").innerHTML = suggestion
+      ? `<p><strong>Suggested slot</strong><span>${esc(suggestion.title)} fits at ${U.fmtMin(first.start)}. Nothing has been moved.</span></p>
+         <a class="btn btn-quiet" href="#/planner?from=${now}">Review ${placed.length === 1 ? "suggestion" : `${placed.length} suggestions`}</a>`
+      : `<p><strong>Plan changes</strong><span>${plan.unplaced.length
+        ? "No more open tasks fit the remaining time and workload limit today."
+        : "There are no unscheduled tasks to place today."}</span></p>
+         <a class="day-link" href="#/planner?from=${now}">Open planner ${icon("chevron-right")}</a>`;
+  }
+
+  function toggleAndRefocus(main, el, update) {
+    const region = el.closest("section");
+    const labelledBy = region?.getAttribute("aria-labelledby");
+    const hadFocus = document.activeElement === el;
+    update(el.dataset.id);
+    if (!hadFocus || !labelledBy) return;
+    const heading = document.getElementById(labelledBy);
+    const checkboxes = Array.from(heading?.closest("section").querySelectorAll(`input[data-act="${el.dataset.act}"]`) || []);
+    const next = checkboxes.find((box) => box.dataset.id === el.dataset.id) || checkboxes[0] || heading;
+    if (main.contains(next)) next.focus({ preventScroll: true });
+  }
 
   function render(main) {
+    destroy();
     const st = store.get();
     const today = U.todayISO();
     const stats = store.todayStats(today);
     const priorities = store.priorities(today);
     const todayTasks = store.tasksFor(today);
-    const events = st.events.filter((e) => e.date === today).sort((a, b) => a.start - b.start);
-    const timeline = todayTasks
-      .filter((t) => t.start != null && !t.done)
-      .map((t) => ({ kind: "task", at: t.start, item: t }))
-      .concat(events.map((e) => ({ kind: "event", at: e.start, item: e })))
-      .sort((a, b) => a.at - b.at);
+    const events = st.events.filter((e) => e.date === today);
     const upcoming = st.tasks
       .filter((t) => !t.done && t.date > today && t.date <= U.addDays(today, 6))
-      .sort((a, b) => (a.date + String(a.start || 0)).localeCompare(b.date + String(b.start || 0)))
+      .sort((a, b) => a.date.localeCompare(b.date) || (a.start ?? Infinity) - (b.start ?? Infinity))
       .slice(0, 6);
     const deadlines = st.projects
-      .filter((p) => p.status !== "archived")
+      .filter((p) => p.status !== "archived" && p.deadline)
       .sort((a, b) => a.deadline.localeCompare(b.deadline))
       .slice(0, 4);
     const habits = st.habits.slice(0, 5);
-    const hours = Math.round((stats.plannedMin / 60) * 10) / 10;
-    const capacity = st.settings.capacity;
+    const capacity = Number(st.settings.capacity) || 300;
     const focusMin = store.focusMinutes(today);
-    const first = st.settings.name.split(" ")[0];
+    const load = stats.plannedMin - capacity;
 
     main.innerHTML = `
-    <div class="page">
-      <header class="page-head">
-        <div>
-          <h1 class="page-title">${esc(U.greeting())}, <em>${esc(first)}</em>.</h1>
-          <div class="page-sub">
-            <span>${U.fmtDate(today, "long")}</span>
-            <span class="dot-sep">·</span>
-            <span>${stats.total} tasks today</span>
-            <span class="dot-sep">·</span>
-            <span>${hours}h planned</span>
+      <div class="page day-sheet">
+        <header class="page-head day-head">
+          <div>
+            <h1 class="page-title">Today</h1>
+            <time class="day-date" datetime="${today}">${U.fmtDate(today, "long")}</time>
           </div>
-        </div>
-        <div class="page-actions">
-          <button class="btn btn-ghost" data-act="assistant">${icon("sparkles")} Ask</button>
-          <button class="btn" data-act="goto" data-href="#/planner">${icon("columns")} Plan my day</button>
-          <button class="btn btn-primary" data-act="add-task">${icon("plus")} Add task</button>
-        </div>
-      </header>
+          <div class="page-actions">
+            <button class="btn btn-ghost" data-act="assistant">${icon("sparkles")} Ask assistant</button>
+            <button class="btn btn-quiet" data-act="add-task">${icon("plus")} Add task</button>
+          </div>
+        </header>
 
-      <div class="grid grid-12">
-        <div class="col-8 rail-stack">
-
-          <section class="panel" aria-labelledby="focus-h">
-            <div class="panel-head">
-              <div class="row gap-3">
-                <h2 id="focus-h">Your focus today</h2>
-                <span class="tag tag-accent tag-mono">${priorities.length} PRIORITIES</span>
-              </div>
-              <span class="meta">${U.fmtDur(priorities.reduce((n, t) => n + t.duration, 0))} of work</span>
+        <div class="day-layout">
+          <section class="day-priorities" aria-labelledby="day-priorities">
+            <div class="day-section-head">
+              <h2 id="day-priorities" tabindex="-1">${priorities.length ? "Start here" : "Priorities"}</h2>
+              <span class="day-measure mono">${U.plural(priorities.length, "priority", "priorities")}</span>
             </div>
-            <div class="rows" id="focus-rows">
-              ${priorities.length
-                ? priorities.map((t, i) => `
-                  <div class="focus-row" data-task="${t.id}">
-                    <span class="focus-index serif">${String(i + 1).padStart(2, "0")}</span>
-                    <label class="check ${t.done ? "is-done" : ""}">
-                      <input type="checkbox" data-act="toggle-task" data-id="${t.id}" aria-label="Complete ${esc(t.title)}" />
-                      <span class="check-label grow">
-                        <span class="focus-title">${esc(t.title)}</span>
-                        <span class="row-meta">
-                          ${t.projectId ? ui.projectTag(t.projectId) : '<span class="tag tag-outline">Personal</span>'}
-                          <span class="sep">·</span>
-                          <span>${t.start != null ? U.fmtMin(t.start) : "Unscheduled"}</span>
-                          ${t.date < today ? `<span class="sep">·</span><span class="danger">${Math.abs(U.diffDays(t.date, today))}d late</span>` : ""}
-                        </span>
-                      </span>
-                    </label>
-                    <span class="mono focus-dur">${U.fmtDur(t.duration)}</span>
-                    <button class="icon-btn icon-btn-sm" data-act="focus-task" data-id="${t.id}" aria-label="Focus on ${esc(t.title)}" title="Focus">
-                      ${icon("play")}
-                    </button>
-                  </div>`).join("")
-                : ui.emptyState("Nothing is on fire", "No open tasks for today. Add one, or bring something forward from this week.",
-                    `<button class="btn btn-sm" data-act="add-task">${icon("plus")} Add a task</button>`)}
-            </div>
-            <div class="panel-foot">
-              <div class="spread" style="margin-bottom:7px">
-                <span style="font-size:11.5px;color:var(--ink-3)">Day load</span>
-                <span class="mono" style="font-size:10.5px;color:var(--ink-2)">${hours}h / ${Math.round(capacity / 60)}h</span>
-              </div>
-              ${ui.meter(Math.round((stats.plannedMin / capacity) * 100))}
-            </div>
+            ${priorities.length ? `<ol class="day-priority-list">${priorities.map((t, i) => priorityHTML(t, i === 0)).join("")}</ol>`
+              : `<p class="day-empty">${stats.total ? "All of today’s tasks are complete." : "No tasks are planned for today."}</p>`}
           </section>
 
-          <section class="panel" aria-labelledby="sched-h">
-            <div class="panel-head">
-              <h2 id="sched-h">Today's shape</h2>
-              <a class="btn btn-ghost btn-sm" href="#/calendar">${icon("calendar")} Calendar</a>
+          <section class="day-schedule" aria-labelledby="day-schedule">
+            <div class="day-section-head">
+              <h2 id="day-schedule" tabindex="-1">Schedule</h2>
+              <a class="day-link" href="#/calendar">Open calendar ${icon("chevron-right")}</a>
             </div>
-            <div class="panel-body-tight">
-              ${timeline.length ? `
-                <div class="timeline">
-                  ${timeline.map((row) => row.kind === "event" ? `
-                    <div class="tl-row">
-                      <span class="tl-time mono">${U.fmtMin(row.item.start)}</span>
-                      <span class="tl-mark tl-mark-event" aria-hidden="true"></span>
-                      <div class="grow">
-                        <div class="tl-title">${esc(row.item.title)}</div>
-                        <div class="tl-meta">${row.item.fixed ? "Calendar · fixed" : "Calendar · flexible"}${row.item.location ? " · " + esc(row.item.location) : ""}</div>
-                      </div>
-                      <span class="tag tag-outline tag-mono">EVENT</span>
-                    </div>` : `
-                    <div class="tl-row">
-                      <span class="tl-time mono">${row.item.start != null ? U.fmtMin(row.item.start) : "—"}</span>
-                      <span class="tl-mark" style="--tone:var(--tone, var(--accent))" aria-hidden="true"></span>
-                      <div class="grow">
-                        <div class="tl-title">${esc(row.item.title)}</div>
-                        <div class="tl-meta">${row.item.projectId ? ui.projectTag(row.item.projectId) : "Personal"} · ${U.fmtDur(row.item.duration)}</div>
-                      </div>
-                      <label class="check">
-                        <input type="checkbox" data-act="toggle-task" data-id="${row.item.id}" aria-label="Complete ${esc(row.item.title)}" />
-                        <span class="sr-only">Complete</span>
-                      </label>
-                    </div>`).join("")}
-                </div>` : ui.emptyState("A clear day", "Nothing is on the clock yet. Your task list is still open if you want to place something.")}
-            </div>
+            <div class="day-agenda-content"></div>
+            <div class="day-plan-note"></div>
           </section>
 
-          <section class="panel" aria-labelledby="later-h">
-            <div class="panel-head">
-              <h2 id="later-h">Later this week</h2>
-              <a class="btn btn-ghost btn-sm" href="#/tasks">${icon("tasks")} All tasks</a>
-            </div>
-            <div class="rows">
-              ${upcoming.length
-                ? upcoming.map((t) => ui.taskRow(t, { showDate: true, showTime: false })).join("")
-                : ui.emptyState("The week is open", "Nothing scheduled after today. That is either good planning or a gap worth filling.")}
-            </div>
-          </section>
-        </div>
-
-        <aside class="col-4 rail-stack" aria-label="Today's summary">
-          <section class="panel">
-            <div class="panel-body">
-              <div class="row" style="align-items:flex-end;justify-content:space-between">
-                <div>
-                  <div class="mono" style="font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)">Today done</div>
-                  <div class="mono" style="font-size:40px;line-height:1;letter-spacing:-.05em;margin-top:6px">${stats.pct}<span style="font-size:17px;color:var(--ink-3)">%</span></div>
-                </div>
-                <div style="text-align:right;font-size:11.5px;color:var(--ink-3);line-height:1.7">
-                  ${stats.done} of ${stats.total} tasks<br/>
-                  ${U.fmtDur(focusMin)} focused
-                </div>
+          <aside class="day-margin" aria-label="Day summary">
+            <section aria-labelledby="day-load">
+              <h2 id="day-load">Workload</h2>
+              <p class="day-load-readout"><span class="mono">${U.fmtDur(stats.plannedMin)}</span> planned / ${U.fmtDur(capacity)} limit</p>
+              <div class="day-load-track${load > 0 ? " is-over" : ""}" aria-hidden="true">
+                <i style="--value:${Math.min(100, Math.round(stats.plannedMin / capacity * 100))}%"></i>
               </div>
-              <div style="margin-top:14px">${ui.meter(stats.pct)}</div>
-              <div class="row gap-3" style="margin-top:14px;font-size:11px;color:var(--ink-3)">
-                <span>${icon("check", "ico-sm")} ${stats.done} done</span>
-                <span>${icon("clock", "ico-sm")} ${stats.total - stats.done} open</span>
+              <p class="day-measure ${load > 0 ? "warning" : ""}">${load > 0
+                ? `${U.fmtDur(load)} over your limit`
+                : load < 0 ? `${U.fmtDur(-load)} under your limit` : "At your daily limit"}</p>
+              <div class="day-progress">
+                <p><strong>${stats.done} of ${U.plural(stats.total, "task")} done</strong></p>
+                ${focusMin ? `<p>${U.fmtDur(focusMin)} in focus</p>` : ""}
               </div>
-            </div>
-          </section>
-
-          <section class="panel" aria-labelledby="dl-h">
-            <div class="panel-head">
-              <h2 id="dl-h">Deadlines</h2>
-              <a class="btn btn-ghost btn-sm" href="#/projects">Projects</a>
-            </div>
-            <div class="rows">
-              ${deadlines.map((p) => {
-                const prog = store.projectProgress(p.id);
+            </section>
+            <section aria-labelledby="day-deadlines">
+              <div class="day-section-head">
+                <h2 id="day-deadlines">Deadlines</h2>
+                <a class="day-link" href="#/projects">Projects ${icon("chevron-right")}</a>
+              </div>
+              ${deadlines.length ? `<ul class="day-deadlines">${deadlines.map((p) => {
                 const days = U.diffDays(p.deadline, today);
-                return `<a class="row-item" href="#/project/${p.id}">
-                  <span class="pdot" style="--tone:var(--p-${p.color})"></span>
-                  <div class="grow">
-                    <div class="row-title" style="font-size:12.5px">${esc(p.name)}</div>
-                    <div class="row-meta">
-                      <span class="mono">${prog.done}/${prog.total}</span>
-                      <span class="sep">·</span>
-                      <span class="${days <= 3 ? "warning" : ""}">${days === 0 ? "due today" : days < 0 ? "overdue" : days + "d left"}</span>
-                    </div>
-                  </div>
-                  <div style="width:54px">${ui.meter(prog.pct, p.color)}</div>
-                </a>`;
-              }).join("")}
-            </div>
-          </section>
-
-          <section class="panel" aria-labelledby="hab-h">
-            <div class="panel-head">
-              <h2 id="hab-h">Habits</h2>
-              <a class="btn btn-ghost btn-sm" href="#/habits">All</a>
-            </div>
-            <div class="rows">
-              ${habits.map((h) => {
+                return `<li><a href="#/project/${encodeURIComponent(p.id)}">
+                  ${projectName(p.id)}
+                  <time class="mono ${days < 0 ? "danger" : days <= 3 ? "warning" : ""}" datetime="${esc(p.deadline)}">${days < 0 ? "Overdue" : days === 0 ? "Today" : U.fmtDate(p.deadline, "short")}</time>
+                </a></li>`;
+              }).join("")}</ul>` : '<p class="day-measure">No project deadlines.</p>'}
+            </section>
+            <section aria-labelledby="day-habits">
+              <div class="day-section-head">
+                <h2 id="day-habits">Habits</h2>
+                <a class="day-link" href="#/habits">All habits ${icon("chevron-right")}</a>
+              </div>
+              ${habits.length ? `<ul class="day-habits">${habits.map((h) => {
                 const done = store.habitDone(h);
-                const week = store.habitWeek(h);
                 const streak = store.habitStreak(h);
-                return `<div class="row-item habit-row">
-                  <label class="check ${done ? "is-done" : ""}">
-                    <input type="checkbox" ${done ? "checked" : ""} data-act="toggle-habit" data-id="${h.id}" aria-label="${esc(h.name)}" />
-                    <span class="check-label grow"><span class="row-title" style="font-size:12.5px">${esc(h.name)}</span></span>
-                  </label>
-                  <div class="habit-dots" aria-hidden="true">
-                    ${week.map((d) => `<i class="${d.done ? "on" : ""}"></i>`).join("")}
-                  </div>
-                  <span class="mono" style="font-size:10px;color:var(--ink-3);min-width:22px;text-align:right">${streak}d</span>
-                </div>`;
-              }).join("")}
-            </div>
-          </section>
+                return `<li><label class="check">
+                  <input type="checkbox" ${done ? "checked" : ""} data-act="toggle-habit" data-id="${esc(h.id)}" />
+                  <span>${esc(h.name)}</span>
+                </label>${streak ? `<span class="mono day-measure" aria-label="${U.plural(streak, "day")} in a row">${streak}d</span>` : ""}</li>`;
+              }).join("")}</ul>` : '<p class="day-measure">No habits to check off.</p>'}
+            </section>
+          </aside>
 
-          <section class="note note-quiet" style="align-items:flex-start">
-            ${icon("sparkles")}
-            <div>
-              <strong>Where the leverage is</strong>
-              <p style="margin-top:3px">${priorities.length ? esc(priorities[0].title) + " is the only thing that has to happen today." : "Nothing has to happen today. Protect the empty space."}</p>
-              <button class="btn btn-sm" style="margin-top:10px" data-act="assistant">${icon("sparkles")} Ask why</button>
+          <section class="day-later" aria-labelledby="day-later">
+            <div class="day-section-head">
+              <h2 id="day-later" tabindex="-1">Later this week</h2>
+              <a class="day-link" href="#/tasks">All tasks ${icon("chevron-right")}</a>
             </div>
+            ${upcoming.length ? `<div class="rows">${upcoming.map((t) => ui.taskRow(t, { showDate: true, showTime: false })).join("")}</div>`
+              : '<p class="day-empty">No upcoming tasks this week.</p>'}
           </section>
-        </aside>
-      </div>
-    </div>`;
+        </div>
+      </div>`;
 
+    const page = main.querySelector(".day-sheet");
+    updateSchedule(page, today, todayTasks, events);
+    clock = setInterval(() => {
+      // Don't replace controls while the person is interacting with them.
+      const focused = document.activeElement;
+      if (today !== U.todayISO()) {
+        if (!page.contains(focused)) render(main);
+      } else if (!focused?.closest(".day-agenda-content, .day-plan-note")) {
+        updateSchedule(page, today, todayTasks, events);
+      }
+    }, 60000);
     ui.bind(main, {
       "add-task": () => ui.quickAddTask(today),
-      "toggle-habit": (el) => store.actions.toggleHabitToday(el.dataset.id),
-      "focus-task": (el) => { location.hash = "#/focus?task=" + el.dataset.id; },
+      "toggle-task": (el) => toggleAndRefocus(main, el, store.actions.toggleTask),
+      "toggle-habit": (el) => toggleAndRefocus(main, el, store.actions.toggleHabitToday),
     });
   }
 
+  function destroy() {
+    clearInterval(clock);
+    clock = null;
+  }
+
   POS.views = POS.views || {};
-  POS.views.today = { render };
+  POS.views.today = { render, destroy };
 })();

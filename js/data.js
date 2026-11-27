@@ -136,7 +136,7 @@
 
       // personal
       { t: "Book the dentist", p: null, m: null, d: 2, s: 900, dur: 15, pri: 3 },
-      { t: "Renew library books", p: null, m: null, d: 0, s: 1050, dur: 10, pri: 3 },
+      { t: "Renew library books", p: null, m: null, d: 0, dur: 10, pri: 3 },
       { t: "Review the monthly budget", p: null, m: null, d: 1, s: 1080, dur: 30, pri: 3 },
       { t: "Buy a new sketchbook", p: null, m: null, d: 4, s: 1080, dur: 15, pri: 3 },
     ];

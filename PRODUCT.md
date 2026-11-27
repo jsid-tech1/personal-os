@@ -15,7 +15,9 @@ the loop.
 
 CAPTURE → UNDERSTAND → BREAK DOWN → ORGANISE → SCHEDULE → EXECUTE → TRACK → ADAPT
 
-1. **Capture** — one free-text box, voice or file. No forms.
+1. **Capture** — one free-text box. Send a thought or question to start a conversation. Local
+   dictation and read-aloud are optional when the browser supports them. Plain-text files can
+   be inserted into a message.
 2. **Understand** — the assistant proposes tasks, goals, projects, notes, dates. Everything is
    editable before it is saved.
 3. **Break down** — a goal becomes milestones, milestones become tasks with estimates and
@@ -31,12 +33,14 @@ CAPTURE → UNDERSTAND → BREAK DOWN → ORGANISE → SCHEDULE → EXECUTE → 
 - The assistant proposes; the user decides. No silent edits, moves or deletes.
 - Proposed and existing are visually distinct, always.
 - Every control does what it says. No decorative buttons.
-- The AI is a **local, deterministic demo** in this build. No model is called, no key is used.
-  The UI says so where it matters.
+- **On-device** is the default. Planning and rescheduling use local rules. In Capture, the user can
+  opt in to DeepSeek for general chat, turn-based voice, and drafts. See [DeepSeek setup](DEEPSEEK.md).
+  Workspace access is a separate choice. Messages are not saved automatically.
 - Integrations (calendar sync, cloud backup) are shown as **not connected**. They are labelled,
   not faked.
-- Data lives in the browser (localStorage). Export and import are real; nothing leaves the device.
-- Offline-first: the app runs from disk with no network. Fonts are self-hosted.
+- Saved workspace data lives in the browser (localStorage). Export and import are real; cloud sync
+  is off. An opted-in DeepSeek conversation sends submitted messages or audio to the provider.
+- Offline-first: the app runs from disk without DeepSeek. Fonts are self-hosted.
 
 ## Screens
 
@@ -45,6 +49,5 @@ Focus · Rescheduling · Notes · Habits · Reflection · Settings
 
 ## Scope of this build
 
-Frontend only, with a structured mock service layer (`js/ai.js`) and seeded sample data. The
-mock layer is deliberately isolated so a real backend or model can replace it without touching
-views.
+Static frontend with on-device rules (`js/ai.js`) and seeded sample data. The optional local
+server (`server.mjs`) relays DeepSeek requests without exposing the API key to the browser.

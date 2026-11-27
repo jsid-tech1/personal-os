@@ -487,14 +487,14 @@
   const DAY_START = 480;   // 8:00
   const DAY_END = 1260;    // 21:00
 
-  function freeWindows(tasks, events, date) {
+  function freeWindows(tasks, events, date, { includeCompleted = false, notBefore = DAY_START } = {}) {
     const busy = [];
     (events || []).filter((e) => e.date === date).forEach((e) => busy.push([e.start, e.end]));
-    (tasks || []).filter((t) => t.date === date && t.start != null && !t.done)
+    (tasks || []).filter((t) => t.date === date && t.start != null && (!t.done || includeCompleted))
       .forEach((t) => busy.push([t.start, t.start + t.duration]));
     busy.sort((a, b) => a[0] - b[0]);
     const windows = [];
-    let cursor = DAY_START;
+    let cursor = Math.max(DAY_START, notBefore);
     busy.forEach(([s, e]) => {
       if (s > cursor) windows.push([cursor, Math.min(s, DAY_END)]);
       cursor = Math.max(cursor, e);
@@ -516,12 +516,11 @@
     return null;
   }
 
-  async function planDay(date, opts = {}) {
-    await wait(opts.instant ? 60 : 900);
+  function draftDay(date, { notBefore = DAY_START } = {}) {
     const store = POS.store;
     const st = store.get();
     const events = st.events;
-    const windows = freeWindows([], events, date);
+    const windows = freeWindows(st.tasks, events, date, { includeCompleted: true, notBefore });
     const capacity = Math.max(60, Number(st.settings.capacity) || 300);
 
     const candidates = st.tasks
@@ -580,8 +579,7 @@
       load,
       capacity,
       explanation:
-        `I front-loaded ${blocks.morning.length} task${blocks.morning.length === 1 ? "" : "s"} before noon and kept the afternoon ` +
-        `for ${blocks.afternoon.length ? "shallower work" : "space"}. ` +
+        `${fixedToday.length} scheduled task${fixedToday.length === 1 ? " stays" : "s stay"} in place. ` +
         (overduePlaced
           ? `${overduePlaced} overdue item${overduePlaced === 1 ? " is" : "s are"} included first. `
           : "") +
@@ -591,6 +589,11 @@
       remaining,
       local: true,
     };
+  }
+
+  async function planDay(date, opts = {}) {
+    await wait(opts.instant ? 60 : 900);
+    return draftDay(date, opts);
   }
 
   /* =========================================================
@@ -674,27 +677,39 @@
      Assistant replies
      ========================================================= */
 
-  async function assistantReply(prompt) {
+  async function assistantReply(prompt, { topic = null } = {}) {
     await wait(700);
-    const q = String(prompt || "").toLowerCase();
+    const message = String(prompt || "").trim();
+    const q = message.toLowerCase();
     const store = POS.store;
     const st = store.get();
     const today = todayISO();
-    const stats = store.todayStats(today);
     const over = store.overdue(today);
-
-    if (/plan|schedule|my day|today/.test(q)) {
-      const plan = await planDay(today, { instant: true });
-      return {
-        title: "A plan for today",
-        text: plan.explanation,
-        bullets: [
-          `${plan.placed.length} tasks placed, ${fmtDur(plan.load)} of work`,
-          plan.unplaced.length ? `${plan.unplaced.length} left unscheduled` : "Everything fits",
-        ],
-        actions: [{ label: "Open daily planner", href: "#/planner" }],
+    const followup = /^(why|how so|what about that|tell me more|explain|go on)[.!?]*$/.test(q);
+    if (followup && topic) {
+      const explanations = {
+        draft: "A draft uses cues in your words, such as task verbs and dates. Edit a title or exclude anything that doesn’t fit. Only the items you add are saved.",
+        plan: "I keep existing blocks in place, then look for time between tasks and events without exceeding your daily work limit. The planner shows what would change.",
+        overdue: "These are open tasks with a date before today. The changes in Rescheduling are proposals until you approve them.",
+        focus: "I order open tasks for today by priority. You can start with any of them.",
+        progress: "The weekly summary counts completed scheduled tasks, logged focus sessions and completed habits from this device.",
+        search: "These are matches in your saved workspace. Open a result to see its full details.",
       };
+      if (explanations[topic]) return { title: "How I worked that out", text: explanations[topic], topic };
     }
+    const searchQuery = message.match(/^(?:find|search for|look up|what do i have on)\s+(.+?)\s*[?!.]*$/i)?.[1];
+    if (searchQuery) {
+      const hits = store.searchAll(searchQuery);
+      const bullets = [
+        ...hits.tasks.slice(0, 3).map((t) => `Task: ${t.title}`),
+        ...hits.projects.slice(0, 3).map((p) => `Project: ${p.name}`),
+        ...hits.notes.slice(0, 3).map((n) => `Note: ${n.title}`),
+        ...hits.habits.slice(0, 3).map((h) => `Habit: ${h.name}`),
+      ];
+      return { title: "Workspace search", text: bullets.length ? `Here’s what matches “${searchQuery}”.` : `Nothing saved matches “${searchQuery}”.`,
+        bullets, actions: bullets.length ? [{ label: "Open tasks", href: "#/tasks" }, { label: "Open notes", href: "#/notes" }] : [], topic: "search" };
+    }
+
     if (/reschedul|behind|missed|overdue|late/.test(q)) {
       const proposal = await rescheduleProposal({ instant: true });
       return {
@@ -704,20 +719,20 @@
           : proposal.summary,
         bullets: proposal.empty ? [] : proposal.moves.map((m) => `${store.task(m.taskId).title} → ${fmtDate(m.to.date, "medium")}, ${fmtMin(m.to.start)}`),
         actions: proposal.empty ? [] : [{ label: "Review the changes", href: "#/reschedule" }],
+        topic: "overdue",
       };
     }
-    if (/focus|what should i|priority|important/.test(q)) {
+    if (/\b(focus|priority|priorities|first task|start with)\b/.test(q)) {
       const top = store.priorities(today);
       return {
-        title: "Where the leverage is",
-        text: top.length
-          ? "Three things carry today. Anything else is optional."
-          : "Today is clear. Use the space for the thing you keep postponing.",
+        title: "What to start with",
+        text: top.length ? "Here are today’s open tasks in priority order." : "No open tasks are planned for today.",
         bullets: top.map((t) => `${t.title} · ${fmtDur(t.duration)}`),
         actions: top.length ? [{ label: `Start: ${top[0].title}`, href: `#/focus?task=${top[0].id}` }] : [],
+        topic: "focus",
       };
     }
-    if (/summar|week|review|progress/.test(q)) {
+    if (/\b(summari[sz]e|week|review|progress)\b/.test(q) && !/\b(plan|schedule)\b/.test(q)) {
       const ws = store.weekStats(POS.util.startOfWeek(today));
       return {
         title: "This week, in numbers",
@@ -727,20 +742,34 @@
           `${st.projects.filter((p) => p.status !== "archived").length} active projects`,
         ],
         actions: [{ label: "Open reflection", href: "#/reflection" }],
+        topic: "progress",
       };
     }
-    if (/note|write|remember/.test(q)) {
+    if (/\b(plan my day|daily plan|my schedule|schedule today|today[’']s (?:plan|schedule|tasks)|what(?:[’']s| is) on today|what do i have today)\b/.test(q)) {
+      const now = POS.util.nowMinutes();
+      const plan = draftDay(today, { notBefore: now });
+      const proposed = plan.placed.filter((row) => !row.kept);
       return {
-        title: "Capture it first",
-        text: "Brain Dump is the fastest place for this. I will sort it into tasks, notes and dates before anything is saved.",
-        bullets: [],
-        actions: [{ label: "Open brain dump", href: "#/dump" }],
+        title: "A plan for today",
+        text: plan.explanation,
+        bullets: [
+          `${POS.util.plural(proposed.length, "proposed placement")}; nothing has changed`,
+          plan.unplaced.length ? `${plan.unplaced.length} still need a slot` : "Everything fits",
+        ],
+        actions: [{ label: "Open daily planner", href: `#/planner?from=${now}` }],
+        topic: "plan",
+      };
+    }
+    if (/\b(notes?|write|remember|save|capture|add a task)\b/.test(q)) {
+      return {
+        title: "Make a draft",
+        text: "Use “Draft tasks or notes” on your message to see what can be saved. You can edit or discard the draft.",
+        topic: "draft",
       };
     }
     return {
-      title: "I can work with that",
-      text:
-        "Tell me what you want to finish and when. I will break it into milestones, estimate the work, and draft a schedule you can edit before anything is saved.",
+      title: "I don’t have an answer for that",
+      text: "This local assistant uses rules, not a general-purpose model. I can help with your workspace or turn what you wrote into a draft.",
       bullets: [
         "“Plan my day around the design review.”",
         "“I missed two tasks — find them a new home.”",
@@ -753,6 +782,7 @@
   POS.ai = {
     parseCapture,
     breakdown,
+    draftDay,
     planDay,
     rescheduleProposal,
     assistantReply,

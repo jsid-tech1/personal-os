@@ -132,8 +132,8 @@
             </div>
             <div class="row gap-2">
               <span class="mono composer-hint">Ctrl ↵</span>
-              <button class="btn btn-accent" id="d-process" ${busy ? "disabled" : ""}>
-                ${busy ? '<span class="spinner"></span> Reading' : icon("sparkles") + " Process"}
+              <button class="btn btn-accent" id="d-talk" ${busy ? "disabled" : ""}>
+                ${icon("sparkles")} Start conversation
               </button>
             </div>
           </div>
@@ -146,8 +146,10 @@
         </section>
 
         <div class="dump-meta">
-          <span>One box, no fields. The assistant reads dates and projects from your words.</span>
-          <span class="mono">Stays on this device</span>
+          <span>Talk through a thought, or review suggestions as a list.</span>
+          <button class="btn btn-quiet" id="d-process" ${busy ? "disabled" : ""}>
+            ${busy ? '<span class="spinner"></span> Reading' : "Review as list"}
+          </button>
         </div>
 
         <div id="analysis">
@@ -169,10 +171,15 @@
       draft = text.value;
       count.textContent = `${U.wordCount(draft)} words`;
     };
+    const talk = () => {
+      const value = text.value.trim();
+      if (!value) { ui.toast("Write a thought or question first.", { kind: "danger" }); return; }
+      ui.openCapture(value, { start: true });
+    };
     sync();
     text.addEventListener("input", sync);
     text.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); process(); }
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); talk(); }
     });
     if (!busy) setTimeout(() => text.focus(), 20);
 
@@ -210,6 +217,7 @@
       });
     }
 
+    main.querySelector("#d-talk").addEventListener("click", talk);
     main.querySelector("#d-process").addEventListener("click", process);
 
     main.querySelectorAll("[data-dump]").forEach((b) => b.addEventListener("click", () => {

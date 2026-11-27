@@ -191,7 +191,7 @@
             <section class="settings-section" id="set-assistant">
               <div class="settings-head">
                 <h2>Assistant</h2>
-                <p>A local, deterministic demo. No model, no API key, no network request.</p>
+                <p>Planning runs on this device. Capture can optionally use DeepSeek for a conversation.</p>
               </div>
               <div class="panel">
                 <div class="panel-body stack gap-4">
@@ -221,7 +221,7 @@
                       </label>
                     </div>
                   </div>
-                  <p class="field-help">Model: none connected. Provider: device-local rules. To replace it, swap the functions in <span class="mono">js/ai.js</span>; the views do not know the difference.</p>
+                  <p class="field-help">DeepSeek is off by default. Enable it in Capture for the current conversation. No workspace details are shared unless you allow it there.</p>
                 </div>
               </div>
             </section>
@@ -297,19 +297,19 @@
             <section class="settings-section" id="set-privacy">
               <div class="settings-head">
                 <h2>Privacy & security</h2>
-                <p>There is no account, server or upload path. The boundary is your browser.</p>
+                <p>Your saved workspace stays in this browser. DeepSeek is optional.</p>
               </div>
               <div class="panel">
                 <div class="panel-body">
                   <dl class="def settings-def">
                     <dt>Where data lives</dt>
-                    <dd><span class="value">localStorage</span>, on this device, under one key. No cookies, no analytics, no third-party requests.</dd>
+                    <dd><span class="value">localStorage</span>, on this device, under one key. No account sync or analytics.</dd>
                     <dt>Who can read it</dt>
                     <dd>Anyone with access to this browser profile and this device. A passcode or device lock is the real protection.</dd>
                     <dt>Network use</dt>
-                    <dd>None at runtime. Fonts are self-hosted. The app works without a connection once its files are available.</dd>
+                    <dd>On-device planning works offline. DeepSeek needs a connection and is only used when you turn it on.</dd>
                     <dt>AI processing</dt>
-                    <dd>Rule-based and local. Text you write is not sent anywhere. No model provider is connected.</dd>
+                    <dd>With DeepSeek on, submitted messages and recorded turns go to DeepSeek. The app doesn’t save audio. Workspace details require a separate opt-in.</dd>
                     <dt>What removes it</dt>
                     <dd>Reset below, importing a backup, or clearing site data in the browser. Export first if it matters.</dd>
                   </dl>
@@ -323,7 +323,7 @@
             </section>
 
             <p class="settings-foot mono">
-              PERSONAL OS · VERSION 1.0 · LOCAL PROTOTYPE · NO BACKEND · NO MODEL CONNECTED · BUILT ${new Date().getFullYear()}
+              PERSONAL OS · VERSION 1.0 · LOCAL WORKSPACE · BUILT ${new Date().getFullYear()}
             </p>
           </div>
         </div>

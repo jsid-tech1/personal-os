@@ -162,10 +162,9 @@
   };
 
   const priorities = (base = todayISO()) => {
-    const list = tasksFor(base).filter((t) => !t.done);
-    const pri = list.filter((t) => t.priority === 1);
-    const rest = list.filter((t) => t.priority !== 1);
-    return pri.concat(rest).slice(0, 3);
+    return tasksFor(base).filter((t) => !t.done)
+      .sort((a, b) => (a.priority || 2) - (b.priority || 2))
+      .slice(0, 3);
   };
 
   const focusMinutes = (iso) =>
@@ -175,12 +174,13 @@
 
   const searchAll = (q) => {
     const query = String(q || "").trim().toLowerCase();
-    if (!query) return { tasks: [], projects: [], notes: [] };
+    if (!query) return { tasks: [], projects: [], notes: [], habits: [] };
     const has = (s) => String(s || "").toLowerCase().includes(query);
     return {
       tasks: state.tasks.filter((t) => has(t.title)).slice(0, 6),
       projects: state.projects.filter((p) => has(p.name) || has(p.description)).slice(0, 4),
-      notes: state.notes.filter((n) => has(n.title) || has(n.body) || n.tags.some(has)).slice(0, 5),
+      notes: state.notes.filter((n) => has(n.title) || has(n.body) || (n.tags || []).some(has)).slice(0, 5),
+      habits: state.habits.filter((h) => has(h.name)).slice(0, 5),
     };
   };
 

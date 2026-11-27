@@ -315,7 +315,10 @@
   }
 
   function closeOverlays() {
-    document.querySelectorAll(".modal-wrap, .sheet-wrap, .palette-wrap").forEach((el) => el.remove());
+    document.querySelectorAll(".modal-wrap, .sheet-wrap, .palette-wrap").forEach((el) => {
+      if (el.__posClose) el.__posClose();
+      else el.remove();
+    });
     document.querySelectorAll(".menu, .popover").forEach((el) => el.remove());
     ui.lockScroll(false);
   }
