@@ -1,0 +1,14 @@
+# Copy to .env for LOCAL development. Never commit your actual secrets.
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4.1-mini
+# Live voice (Ask). Uses the same OPENAI_API_KEY; override only if needed.
+OPENAI_REALTIME_MODEL=gpt-realtime-2.1
+OPENAI_LIVE_VOICE=marin
+OPENAI_LIVE_TRANSCRIBE=gpt-4o-mini-transcribe
+# Goal-planning agent and optional Capture assistant (server-side only).
+DEEPSEEK_API_KEY=
+DEEPSEEK_MODEL=deepseek-flash
+PORT=8787
+# Firebase Admin application-default credentials, or a service-account JSON OUTSIDE the repository.
+GOOGLE_APPLICATION_CREDENTIALS=C:\path\outside\repo\firebase-service-account.json
+GCLOUD_PROJECT=personal-os-12b89

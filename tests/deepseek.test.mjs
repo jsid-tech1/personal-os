@@ -29,6 +29,9 @@ test("the server works without a key and never serves private files", async (t) 
   assert.match(await app.text(), /js\/deepseek\.js/);
   const status = await fetch(`${base}/api/deepseek/status`);
   assert.deepEqual(await status.json(), { configured: false });
+  const plan = await fetch(`${base}/api/plan`, { method: "POST", headers: { origin: base } });
+  assert.equal(plan.status, 401);
+  assert.match((await plan.json()).error, /Sign in/);
   assert.equal((await post(base, "chat", {})).status, 503);
   assert.equal((await fetch(`${base}/.env`)).status, 404);
   assert.equal((await fetch(`${base}/server.mjs`)).status, 404);

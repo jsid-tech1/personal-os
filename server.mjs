@@ -1,10 +1,11 @@
 import { createServer } from "node:http";
-import { createReadStream } from "node:fs";
+import { createReadStream, existsSync } from "node:fs";
 import { stat } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, extname, join, resolve } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
+import planning from "./functions/api.cjs";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const base = "https://api.deepseek.com";
@@ -131,6 +132,10 @@ export function createPersonalServer({ key = "", fetchImpl = fetch } = {}) {
         if ((req.headers.origin && req.headers.origin !== origin) || req.headers["sec-fetch-site"] === "cross-site") {
           throw new RequestError(403, "Requests must come from Personal OS.");
         }
+        if (url.pathname === "/api/plan") {
+          await planning.handler(req, res);
+          return;
+        }
         if (req.method === "GET" && operation === "status") {
           json(res, 200, { configured: Boolean(key) });
           return;
@@ -237,6 +242,8 @@ export function createPersonalServer({ key = "", fetchImpl = fetch } = {}) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  const env = join(root, ".env");
+  if (existsSync(env)) process.loadEnvFile(env);
   const port = Number(process.env.PORT || 8787);
   createPersonalServer({ key: process.env.DEEPSEEK_API_KEY?.trim() }).listen(port, "127.0.0.1", () => {
     console.log(`Personal OS: http://localhost:${port}/`);

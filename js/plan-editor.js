@@ -22,7 +22,7 @@
         <div class="plan-preferences"><div class="field"><label class="label" for="plan-deadline">Deadline</label><input class="input" type="date" id="plan-deadline" min="${U.todayISO()}" max="${P.add(U.todayISO(), 366)}" value="${P.add(U.todayISO(), 7)}" required></div><div class="field"><label class="label" for="plan-capacity">Minutes per working day</label><input class="input" type="number" id="plan-capacity" min="15" max="720" step="5" value="${settings.capacity || 120}" required></div></div>
         <fieldset class="day-picker"><legend>Available working days</legend>${days.map((d, i) => `<label><input type="checkbox" name="workday" value="${i}" ${(settings.workDays || [1, 2, 3, 4, 5]).includes(i) ? "checked" : ""}><span>${d}</span></label>`).join("")}</fieldset>
         <div class="plan-actions"><button class="btn btn-primary" type="submit" id="plan-generate">Generate AI plan</button><button class="btn" type="button" id="plan-manual">Create manually</button></div>
-        <p class="field-help">Only the description and daily capacity are sent to the AI provider. Nothing is saved until you approve.</p>
+        <p class="field-help">Only your description and minutes per working day are sent to DeepSeek. Nothing is saved until you approve.</p>
       </form>
       <p class="plan-message" id="plan-message" role="status" aria-live="polite"></p>
       <div id="plan-review" hidden></div>
@@ -69,6 +69,10 @@
     function readRows() {
       return [...wrap.querySelectorAll(".plan-step")].map(row => ({ title: row.querySelector('[name="title"]').value.trim(), date: row.querySelector('[name="date"]').value, duration: Number(row.querySelector('[name="duration"]').value) }));
     }
+    function reviewMessage(ready) {
+      const missing = proposal.steps.filter(step => !step.date).length;
+      message(missing ? `${missing} of ${proposal.steps.length} steps won't fit before the deadline. Extend it or edit the steps, then choose Rebalance dates.` : ready);
+    }
     function renderReview() {
       const host = $("#plan-review");
       host.hidden = false;
@@ -86,7 +90,7 @@
         } catch (e) { message(e.message); }
       };
       $("#plan-distribute").onclick = () => {
-        try { proposal.title = $("#plan-title").value; proposal.steps = P.schedule(readRows(), options(), POS.store.get().tasks); renderReview(); message("Dates rebalanced. Check the plan, then approve."); }
+        try { proposal.title = $("#plan-title").value; proposal.steps = P.scheduleDraft(readRows(), options(), POS.store.get().tasks); renderReview(); reviewMessage("Dates rebalanced. Check the plan, then approve."); }
         catch (e) { message(e.message); }
       };
       $("#plan-approve").onclick = () => {
@@ -94,6 +98,7 @@
           if (POS.cloud.getStatus().user?.uid !== owner) throw new Error("Your account changed. Reopen the planner.");
           const steps = readRows(), opts = options(), title = $("#plan-title").value.trim();
           if (!title) throw new Error("Give the main task a title.");
+          if (steps.some(step => !step.date)) throw new Error("Some steps still need dates. Set them here, or adjust the deadline and choose Rebalance dates.");
           P.validate(steps, opts, POS.store.get().tasks);
           const projectId = U.uid("p");
           POS.store.set(s => {
@@ -130,12 +135,13 @@
         $("#plan-generate").textContent = "Building your plan…";
         message("Breaking the work into steps, then checking available space in your calendar…");
         const token = await POS.cloud.token();
+        if (!wrap.isConnected || POS.cloud.getStatus().user?.uid !== owner) return;
         const response = await fetch("/api/plan", { method: "POST", signal: controller.signal, headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }, body: JSON.stringify({ description, capacity: opts.capacity }) });
-        const result = await response.json();
+        const result = await response.json().catch(() => { throw new Error("The planning server did not return a plan. Open Personal OS from the server started by npm run dev and try again."); });
         if (!response.ok) throw new Error(result.error || "AI generation failed. Try again or create manually.");
         if (!wrap.isConnected || POS.cloud.getStatus().user?.uid !== owner) return;
-        proposal = { title: String(result.title || "New project").slice(0, 200), steps: P.schedule(result.steps, opts, POS.store.get().tasks) };
-        renderReview(); message("Your proposal is ready. Edit anything before approving.");
+        proposal = { title: result.title, steps: P.scheduleDraft(result.steps, opts, POS.store.get().tasks) };
+        renderReview(); reviewMessage("Your DeepSeek breakdown is ready. Review the steps and dates before approving.");
       } catch (e) { if (e.name !== "AbortError") message(e.message); }
       finally { generating = false; $("#plan-generate").disabled = false; $("#plan-manual").disabled = false; $("#plan-generate").textContent = proposal ? "Regenerate AI plan" : "Generate AI plan"; }
     };

@@ -13,7 +13,7 @@
     if (!Number.isInteger(p.capacity) || p.capacity < 15 || p.capacity > 720) throw new Error("Daily capacity must be between 15 and 720 minutes.");
     if (!Array.isArray(p.days) || !p.days.length || p.days.some(d => !Number.isInteger(d) || d < 0 || d > 6)) throw new Error("Choose at least one working day.");
   }
-  function schedule(steps, options, existing = []) {
+  function scheduleDraft(steps, options, existing = []) {
     preferences(options);
     if (!validDate(options.start) || !validDate(options.deadline) || options.deadline < options.start || options.deadline > add(options.start, 366)) throw new Error("Choose a deadline within the next year.");
     if (!Array.isArray(steps) || !steps.length || steps.length > 100) throw new Error("A plan needs between 1 and 100 steps.");
@@ -24,10 +24,15 @@
       const duration = Number(step.duration), title = String(step.title || "").trim();
       if (!title || title.length > 200 || !Number.isInteger(duration) || duration < 5 || duration > options.capacity) throw new Error("Each step needs a title and 5–" + options.capacity + " minutes. Split longer steps.");
       while (cursor <= options.deadline && (!options.days.includes(date(cursor).getDay()) || (loads[cursor] || 0) + duration > options.capacity)) cursor = add(cursor, 1);
-      if (cursor > options.deadline) throw new Error("This work does not fit before the deadline. Extend it, increase capacity, or reduce the plan.");
+      if (cursor > options.deadline) return { title, duration, date: "" };
       loads[cursor] = (loads[cursor] || 0) + duration;
       return { title, duration, date: cursor };
     });
+  }
+  function schedule(steps, options, existing = []) {
+    const draft = scheduleDraft(steps, options, existing);
+    if (draft.some(step => !step.date)) throw new Error("This work does not fit before the deadline. Extend it, increase capacity, or reduce the plan.");
+    return draft;
   }
   function validate(steps, options, existing = []) {
     preferences(options);
@@ -62,5 +67,5 @@
     if (/\b(?:due|by) today\b/i.test(text)) return base;
     return null;
   }
-  return { iso, add, week, validDate, preferences, schedule, validate, extractDeadline };
+  return { iso, add, week, validDate, preferences, scheduleDraft, schedule, validate, extractDeadline };
 });
