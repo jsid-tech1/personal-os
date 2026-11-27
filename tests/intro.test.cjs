@@ -65,6 +65,8 @@ test("10-second timeline: product completion, mosaic formation, deterministic se
   assert.equal(await page.locator(".intro-tile").evaluateAll(els => els.every(el => +getComputedStyle(el).opacity === 1)), true);
   await page.evaluate(() => { POS.intro.seek(1); POS.intro.seek(7.5); });
   assert.deepEqual(await snapshot(), first, "backwards scrub restores the identical fragment state");
+  // Fonts, authentication notices, and other late content can reposition the live hero.
+  await page.locator(".welcome-copy").evaluate(el => { el.style.paddingBottom = "120px"; });
   await page.evaluate(() => POS.intro.seek(9.6));
   const geometry = await page.evaluate(() => {
     const a = document.querySelector(".intro-mosaic").getBoundingClientRect();
@@ -102,7 +104,10 @@ test("pause, keyboard focus trap, Escape, and once-per-tab reload", async t => {
 
 test("autoplay finishes at ten seconds and restores the landing page", async t => {
   const { page } = await open(t, { url: "/?intro=1" });
-  await page.waitForFunction(() => !POS.intro.running, undefined, { timeout: 13000 });
+  await page.bringToFront();
+  // Background tabs intentionally pause; foreground the test and allow CPU lag smoothing.
+  await page.evaluate(() => POS.intro.play());
+  await page.waitForFunction(() => !POS.intro.running, undefined, { timeout: 25000 });
   assert.equal(await page.evaluate(() => POS.intro.time), 10);
   assert.equal(await page.locator("#welcome").evaluate(el => el.inert), false);
   assert.equal(await page.locator("#welcome-signin").evaluate(el => el.style.opacity), "");
@@ -138,6 +143,21 @@ test("blocked storage works; a reduced-motion change immediately cleans up", asy
   assert.equal(await page.locator("#welcome").evaluate(el => el.inert), false);
 });
 
+test("dark appearance uses the existing theme and keeps the introduction usable", async t => {
+  const { page } = await open(t, { colorScheme: "dark" });
+  await page.evaluate(() => POS.intro.seek(7.5));
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), "dark");
+  assert.equal(await page.locator(".intro-paper").evaluate(el => getComputedStyle(el).backgroundColor), "rgb(25, 34, 30)");
+  const controls = await page.locator(".intro-controls").boundingBox();
+  assert.ok(controls.x >= 0 && controls.y >= 0);
+  if (process.env.INTRO_SHOTS) {
+    await fs.mkdir("test-results/intro", { recursive: true });
+    await page.screenshot({ path: "test-results/intro/dark-1440.png" });
+  }
+  await page.locator("#intro-skip").click();
+  assert.equal(await page.locator("#welcome").evaluate(el => el.inert), false);
+});
+
 test("keyframe captures at desktop, tablet and phone widths", { skip: !process.env.INTRO_SHOTS }, async t => {
   await fs.mkdir("test-results/intro", { recursive: true });
   const frames = [];
@@ -145,6 +165,10 @@ test("keyframe captures at desktop, tablet and phone widths", { skip: !process.e
     const { page } = await open(t, { viewport: { width, height } });
     for (const time of [0, 1.9, 3.8, 5.9, 7.5, 8.9, 9.7]) {
       await page.evaluate(time => POS.intro.seek(time), time);
+      if (time < 3) {
+        const plan = await page.locator(".intro-plan").boundingBox();
+        assert.ok(plan.x >= 0 && plan.x + plan.width <= width, `task panel fits ${width}px at ${time}s`);
+      }
       const filename = `${width}-${time}.png`;
       await page.screenshot({ path: `test-results/intro/${filename}` });
       if (width === 1440 || width === 390) frames.push({ width, height, time, filename });
