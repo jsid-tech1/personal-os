@@ -174,6 +174,7 @@
       if (previously && previously.focus) previously.focus();
       if (!fromAction && opts.onClose) opts.onClose();
     }
+    wrap._close = close;
     wrap.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => close(false)));
     document.addEventListener("keydown", onKey);
     setTimeout(() => {
@@ -216,6 +217,7 @@
       if (previously && previously.focus) previously.focus();
       if (opts.onClose) opts.onClose();
     }
+    wrap._close = close;
     wrap.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", close));
     document.addEventListener("keydown", onKey);
     setTimeout(() => {
@@ -802,6 +804,7 @@
       document.removeEventListener("keydown", onKey);
       if (previously && previously.focus) previously.focus();
     };
+    wrap._close = close;
     const render = () => {
       const q = input.value.trim();
       const found = store.searchAll(q);

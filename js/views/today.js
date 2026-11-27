@@ -53,6 +53,8 @@
         </div>
       </header>
 
+      ${POS.onboarding.html()}
+
       <div class="grid grid-12">
         <div class="col-8 rail-stack">
 
@@ -187,7 +189,7 @@
                   </div>
                   <div style="width:54px">${ui.meter(prog.pct, p.color)}</div>
                 </a>`;
-              }).join("")}
+              }).join("") || ui.emptyState("No project deadlines", "Add a project when you have a larger piece of work to plan.", '<a class="btn btn-sm" href="#/projects">Add a project</a>')}
             </div>
           </section>
 
@@ -211,7 +213,7 @@
                   </div>
                   <span class="mono" style="font-size:10px;color:var(--ink-3);min-width:22px;text-align:right">${streak}d</span>
                 </div>`;
-              }).join("")}
+              }).join("") || ui.emptyState("No habits yet", "Choose a routine you want to keep.", '<a class="btn btn-sm" href="#/habits">Add a habit</a>')}
             </div>
           </section>
 
@@ -232,8 +234,9 @@
       "toggle-habit": (el) => store.actions.toggleHabitToday(el.dataset.id),
       "focus-task": (el) => { location.hash = "#/focus?task=" + el.dataset.id; },
     });
+    POS.onboarding.bind(main);
   }
 
   POS.views = POS.views || {};
-  POS.views.today = { render };
+  POS.views.today = { render, destroy: () => POS.onboarding.destroy() };
 })();

@@ -1,0 +1,13 @@
+node_modules/
+test-results/
+playwright-report/
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+dist/
+.taste-skill/
+.env
+.env.*
+!.env.example
+functions/.secret.local
+*-service-account.json

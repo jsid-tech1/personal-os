@@ -402,7 +402,7 @@
   background: var(--warning-soft);
   color: var(--warning);
   font-size: 12px;
-  border-bottom: 1px solid #e7d5bc;
+  border-bottom: 1px solid var(--warning-line);
 }
 .offline-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--warning); }
 
@@ -442,7 +442,7 @@
     content: "";
     position: fixed;
     inset: 0;
-    background: rgba(18, 20, 23, 0.32);
+    background: var(--backdrop);
     z-index: 64;
     animation: fade var(--t-fast) var(--ease) both;
   }

@@ -4,6 +4,10 @@
   const POS = window.POS;
   const { todayISO, addDays, uid, clamp } = POS.util;
   const KEY = "personal-os:v1";
+  let storageKey = KEY;
+  let account = null;
+  let persistenceError = "";
+  const accountStates = new Map();
 
   let state = null;
   let listeners = [];
@@ -15,10 +19,14 @@
     saveTimer = null;
     if (!state) return;
     try {
-      localStorage.setItem(KEY, JSON.stringify(state));
+      localStorage.setItem(storageKey, JSON.stringify(state));
+      persistenceError = "";
     } catch (err) {
       console.warn("Personal OS: could not persist state", err);
+      persistenceError = "This browser could not save your changes. Export a backup or save to the cloud before closing this tab.";
     }
+    window.dispatchEvent(new Event("pos:storage"));
+    return !persistenceError;
   };
 
   const persist = () => {
@@ -35,7 +43,7 @@
 
   const load = () => {
     try {
-      const raw = localStorage.getItem(KEY);
+      const raw = !localStorage.getItem(KEY + ":owner") && localStorage.getItem(KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && parsed.version === 1 && Array.isArray(parsed.tasks)) {
@@ -48,8 +56,36 @@
     } catch (err) {
       console.warn("Personal OS: starting fresh", err);
     }
-    state = POS.buildSeed();
-    persist();
+    state = POS.buildEmpty();
+  };
+
+  const activateAccount = (user) => {
+    if (account === user.uid) return;
+    if (account) {
+      accountStates.set(account, state);
+      flush();
+    }
+    clearTimeout(saveTimer);
+    const nextKey = KEY + ":user:" + encodeURIComponent(user.uid);
+    let next = accountStates.get(user.uid) || null;
+    try {
+      const saved = localStorage.getItem(nextKey);
+      if (saved && !next) next = POS.cloud.validateWorkspace(JSON.parse(saved));
+      // Adopt an existing pre-account workspace once. Keep the original as a recovery copy.
+      const owner = localStorage.getItem(KEY + ":owner");
+      if (!next && !account && !owner && localStorage.getItem(KEY)) {
+        next = POS.cloud.validateWorkspace(state);
+        localStorage.setItem(KEY + ":owner", user.uid);
+      }
+    } catch (error) {
+      // Do not replace an unreadable saved workspace on sign-in.
+      throw new Error("Your saved workspace could not be opened. Export or recover this browser's site data before trying again.");
+    }
+    account = user.uid;
+    storageKey = nextKey;
+    state = next || POS.buildEmpty(user);
+    persistenceError = "";
+    flush();
   };
 
   const get = () => state;
@@ -72,11 +108,15 @@
     emit("reset");
   };
 
+  const clear = () => {
+    state = POS.buildEmpty(POS.cloud.getStatus().user || {});
+    persist();
+    emit("reset");
+  };
+
   const importState = (obj) => {
-    if (!obj || !Array.isArray(obj.tasks) || !Array.isArray(obj.projects)) {
-      throw new Error("That file is not a Personal OS backup.");
-    }
-    state = obj;
+    POS.cloud.validateWorkspace(obj);
+    state = clone(obj);
     state.plans = state.plans || {};
     state.proposals = state.proposals || {};
     persist();
@@ -220,9 +260,19 @@
   const updateTask = (id, patch) => set((s) => {
     const t = s.tasks.find((x) => x.id === id);
     if (!t) return null;
+    const wasDone = t.done;
     Object.assign(t, patch);
     if (patch.done === true && !t.completedAt) t.completedAt = todayISO();
     if (patch.done === false) t.completedAt = null;
+    if (typeof patch.done === "boolean" && patch.done !== wasDone && POS.planning) {
+      s.mosaics ||= {};
+      Object.values(s.mosaics).forEach(week => { week.taskIds = week.taskIds.filter(taskId => taskId !== id); });
+      if (patch.done) {
+        const week = POS.planning.week(todayISO());
+        s.mosaics[week] ||= { taskIds: [], createdAt: todayISO() };
+        s.mosaics[week].taskIds.push(id);
+      }
+    }
     return t;
   }, "task:update");
 
@@ -424,7 +474,8 @@
   };
 
   POS.store = {
-    load, get, set, subscribe, reset, importState, flush,
+    load, get, set, subscribe, reset, clear, importState, flush, activateAccount,
+    storageKey: () => storageKey, persistenceError: () => persistenceError,
     project, task, note, habit, activeProjects, openTasks, tasksFor, tasksOfProject,
     overdue, duesoon, projectProgress, milestoneProgress,
     habitDone, habitStreak, habitWeek, habitConsistency,

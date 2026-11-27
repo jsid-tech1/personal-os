@@ -68,11 +68,9 @@ hr {
 }
 
 ::selection {
-  background: rgba(32, 54, 214, 0.18);
+  background: var(--selection);
   color: var(--ink);
 }
-
-:focus { outline: none; }
 
 :focus-visible {
   outline: 2px solid var(--accent);

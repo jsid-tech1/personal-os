@@ -12,33 +12,27 @@
       group: "Workspace",
       items: [
         { id: "today", label: "Today", icon: "today", href: "#/today" },
-        { id: "dump", label: "Brain Dump", icon: "brain", href: "#/dump" },
         { id: "tasks", label: "Tasks", icon: "tasks", href: "#/tasks", count: () => store.openTasks().length },
-        { id: "projects", label: "Projects", icon: "folder", href: "#/projects" },
         { id: "calendar", label: "Calendar", icon: "calendar", href: "#/calendar" },
-        { id: "planner", label: "Planner", icon: "columns", href: "#/planner" },
       ],
     },
     {
-      group: "Practice",
+      group: "Your space",
       items: [
-        { id: "notes", label: "Notes", icon: "notes", href: "#/notes" },
-        { id: "habits", label: "Habits", icon: "habits", href: "#/habits" },
+        { id: "mosaic", label: "My Mosaic", icon: "columns", href: "#/mosaic" },
         { id: "focus", label: "Focus", icon: "focus", href: "#/focus" },
-        { id: "reflection", label: "Reflection", icon: "reflection", href: "#/reflection" },
       ],
     },
     {
       group: "System",
       items: [
-        { id: "notifications", label: "Notifications", icon: "bell", href: "#/notifications", count: () => store.unreadCount() },
-        { id: "reschedule", label: "Rescheduling", icon: "rotate", href: "#/reschedule" },
-        { id: "settings", label: "Settings", icon: "settings", href: "#/settings" },
+        { id: "settings", label: "Profile", icon: "user", href: "#/settings" },
       ],
     },
   ];
 
   const TITLES = {
+    mosaic: "My Mosaic",
     today: "Today",
     dump: "Brain Dump",
     tasks: "Tasks",
@@ -53,7 +47,7 @@
     notes: "Notes",
     habits: "Habits",
     reflection: "Reflection",
-    settings: "Control Centre",
+    settings: "Profile",
   };
 
   const GROUP_OF = {};
@@ -66,6 +60,7 @@
   let activeView = null;
   let lastPath = null;
   let pendingRerender = false;
+  let activeAccount = null;
 
   /* =========================================================
      Routing
@@ -104,7 +99,7 @@
       if (t) title = t.title.length > 34 ? t.title.slice(0, 34) + "…" : t.title;
     }
     if (!["today", "dump", "tasks", "projects", "project", "goal", "calendar", "planner",
-      "notifications", "focus", "reschedule", "notes", "habits", "reflection", "settings"].includes(key)) {
+      "notifications", "focus", "reschedule", "notes", "habits", "reflection", "settings", "mosaic"].includes(key)) {
       viewKey = null;
     }
     return {
@@ -125,6 +120,7 @@
   };
 
   function render(reason = "route") {
+    if (!POS.cloud.getStatus().user || !activeAccount) return;
     const route = parseHash();
     const meta = resolve(route);
     const main = document.getElementById("main");
@@ -136,6 +132,7 @@
       closeOverlays();
       ui.closeMenus();
       app().classList.remove("is-focus", "nav-open");
+      document.getElementById("sidebar").inert = false;
       menuBtn().setAttribute("aria-expanded", "false");
     }
 
@@ -158,7 +155,10 @@
       main.innerHTML = errorPanel(err);
     }
 
-    if (meta.key === "focus") app().classList.add("is-focus");
+    if (meta.key === "focus") {
+      app().classList.add("is-focus");
+      document.getElementById("sidebar").inert = true;
+    }
 
     if (changedPath) window.scrollTo(0, 0);
     else window.scrollTo(0, y);
@@ -232,11 +232,11 @@
     return `
       <div class="mobilebar-inner">
         ${item("today", "Today", "today", "#/today")}
-        ${item("tasks", "Tasks", "tasks", "#/tasks")}
-        <button class="capture-fab" id="mobile-capture" aria-label="Capture something">
-          <i>${icon("plus")}</i><span>Capture</span>
-        </button>
         ${item("calendar", "Calendar", "calendar", "#/calendar")}
+        <button class="capture-fab" id="mobile-capture" aria-label="Add task">
+          <i>${icon("plus")}</i><span>Add task</span>
+        </button>
+        ${item("mosaic", "Mosaic", "columns", "#/mosaic")}
         <button class="mobile-more" id="mobile-more" aria-label="Open navigation">
           ${icon("list")}<span>More</span>
         </button>
@@ -255,13 +255,12 @@
     if (foot) {
       foot.innerHTML = `
         <button class="sidebar-assistant" id="sidebar-assistant">
-          ${icon("sparkles")}<span class="grow">Ask the assistant</span><span class="mono">AI</span>
+          ${icon("plus")}<span class="grow">Plan something new</span>
         </button>
         <div class="status-line ${navigator.onLine ? "" : "is-offline"}">
           <span class="dot"></span>
-          <span>${navigator.onLine ? "Saved on this device" : "Offline · still saved"}</span>
-          <span class="mono">LOCAL</span>
-        </div>`;
+          <span id="local-save-status">${store.persistenceError() ? "Changes not saved" : navigator.onLine ? "Saved on this device" : "Offline · still saved"}</span>
+        </div><p class="sidebar-sync" data-sync-status>${esc(POS.sync?.status().error || POS.sync?.status().text || "Saved on this device")}</p>`;
       foot.querySelector("#sidebar-assistant").addEventListener("click", () => ui.openAssistant());
     }
 
@@ -283,7 +282,7 @@
     const avatar = document.getElementById("avatar-btn");
     if (avatar) {
       avatar.textContent = st.settings.initials || "OS";
-      avatar.setAttribute("aria-label", `Open control centre for ${st.settings.name}`);
+      avatar.setAttribute("aria-label", `Open profile for ${st.settings.name}`);
     }
 
     const bar = document.getElementById("mobilebar");
@@ -315,7 +314,10 @@
   }
 
   function closeOverlays() {
-    document.querySelectorAll(".modal-wrap, .sheet-wrap, .palette-wrap").forEach((el) => el.remove());
+    document.querySelectorAll(".modal-wrap, .sheet-wrap, .palette-wrap").forEach((el) => {
+      if (el._close) el._close();
+      else el.remove();
+    });
     document.querySelectorAll(".menu, .popover").forEach((el) => el.remove());
     ui.lockScroll(false);
   }
@@ -326,6 +328,9 @@
     });
     menuBtn().innerHTML = icon("list");
     document.getElementById("notify-btn").innerHTML = icon("bell");
+    const capture = document.getElementById("capture-btn");
+    capture.innerHTML = icon("plus") + "<span>Add task</span>";
+    capture.setAttribute("aria-label", "Add task");
   }
 
   /* =========================================================
@@ -352,9 +357,72 @@
      Boot
      ========================================================= */
 
+  function syncAuth(status) {
+    const uid = status.user ? status.user.uid : null;
+    if (uid === activeAccount) return;
+    closeOverlays();
+    if (activeView && activeView.destroy) activeView.destroy();
+    activeView = null;
+    if (uid) {
+      try {
+        store.activateAccount(status.user);
+      } catch (error) {
+        activeAccount = null;
+        document.getElementById("welcome").hidden = false;
+        app().hidden = true;
+        app().inert = true;
+        document.getElementById("mobilebar").hidden = true;
+        document.getElementById("main").replaceChildren();
+        POS.welcome.update({ ...status, error: error.message });
+        return;
+      }
+    } else store.flush();
+    activeAccount = uid;
+    const signedIn = !!uid;
+    document.getElementById("welcome").hidden = signedIn;
+    app().hidden = !signedIn;
+    app().inert = !signedIn;
+    const mobile = document.getElementById("mobilebar");
+    mobile.hidden = !signedIn;
+    mobile.inert = !signedIn;
+    document.querySelector(".skip-link").href = signedIn ? "#main" : "#welcome-main";
+    updateStorageStatus();
+    if (POS.sync) POS.sync.activate(status.user);
+    lastPath = null;
+    if (signedIn) {
+      render("signin");
+      document.getElementById("main").focus({ preventScroll: true });
+    } else {
+      closeOverlays();
+      closeNav();
+      if (activeView && activeView.destroy) activeView.destroy();
+      activeView = null;
+      pendingRerender = false;
+      document.getElementById("main").replaceChildren();
+      document.title = "Sign in · Personal OS";
+      window.scrollTo(0, 0);
+      document.getElementById("welcome-title").focus({ preventScroll: true });
+    }
+  }
+
+  function updateStorageStatus() {
+    const banner = document.getElementById("storage-error");
+    banner.hidden = !activeAccount || !store.persistenceError();
+    const label = document.getElementById("local-save-status");
+    if (label) label.textContent = store.persistenceError() ? "Changes not saved" : navigator.onLine ? "Saved on this device" : "Offline · still saved";
+  }
+
   function boot() {
     store.load();
     hydrateStaticIcons();
+    POS.welcome.init();
+    document.title = "Sign in · Personal OS";
+    POS.cloud.subscribe(syncAuth);
+    window.addEventListener("pos:storage", updateStorageStatus);
+    document.getElementById("storage-retry").addEventListener("click", () => store.flush());
+    document.getElementById("storage-export").addEventListener("click", () => {
+      U.download(`personal-os-backup-${U.todayISO()}.json`, JSON.stringify(store.get(), null, 2), "application/json");
+    });
 
     document.getElementById("menu-btn").addEventListener("click", toggleNav);
     document.getElementById("search-btn").addEventListener("click", () => ui.openSearch());
@@ -377,6 +445,7 @@
     });
 
     document.addEventListener("keydown", (e) => {
+      if (!activeAccount) return;
       if ((e.ctrlKey || e.metaKey) && String(e.key).toLowerCase() === "k") {
         e.preventDefault();
         if (!document.querySelector(".palette-wrap")) ui.openSearch();
@@ -411,10 +480,11 @@
     });
 
     if (!location.hash) history.replaceState(null, "", "#/today");
-    render("route");
     updateConnectivity();
     window.addEventListener("pagehide", () => { POS.store.flush(); });
     if (window.innerWidth <= 960) app().classList.remove("nav-open");
+    document.documentElement.dataset.appBooted = "true";
+    POS.cloud.start();
   }
 
   POS.app = { render, closeNav };
