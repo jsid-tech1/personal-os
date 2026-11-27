@@ -162,6 +162,7 @@
 
     if (changedPath) window.scrollTo(0, 0);
     else window.scrollTo(0, y);
+    if (changedPath && lastPath !== null) POS.loader?.reveal(main);
 
     lastPath = meta.path;
     pendingRerender = false;

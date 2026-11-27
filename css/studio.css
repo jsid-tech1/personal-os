@@ -1,7 +1,12 @@
 @font-face { font-family: "MilesDane"; src: url("../assets/fonts/Milesdane Trial.otf") format("opentype"); font-style: normal; font-weight: 400; font-display: swap; }
+@font-face { font-family: "Neue Montreal"; src: url("../assets/fonts/NeueMontreal-Regular.otf") format("opentype"); font-style: normal; font-weight: 400; font-display: swap; }
+@font-face { font-family: "Neue Montreal"; src: url("../assets/fonts/NeueMontreal-Medium.otf") format("opentype"); font-style: normal; font-weight: 500; font-display: swap; }
+@font-face { font-family: "Neue Montreal"; src: url("../assets/fonts/NeueMontreal-Bold.otf") format("opentype"); font-style: normal; font-weight: 700; font-display: swap; }
+@font-face { font-family: "Neue Montreal"; src: url("../assets/fonts/NeueMontreal-Italic.otf") format("opentype"); font-style: italic; font-weight: 400; font-display: swap; }
 :root {
   --font-display: "MilesDane", "Instrument Serif", Georgia, serif;
-  --font-ui: "DM Mono", ui-monospace, monospace;
+  --font-ui: "Neue Montreal", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Neue Montreal", "Helvetica Neue", Arial, sans-serif;
   --paper: #f3f4f0; --surface: #fbfcf8; --sunken: #e9ede5; --sunken-2: #dce3d8;
   --ink: #202923; --ink-2: #4c5950; --ink-3: #687469; --ink-4: #798279;
   --line: #d9dfd5; --line-soft: #e5e9e1; --line-strong: #b5c1b0;

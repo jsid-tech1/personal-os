@@ -12,14 +12,34 @@
 <title>Personal OS — Your progress takes shape</title>
 <script src="js/entry.js?v=mosaic1"></script><script src="js/theme.js?v=mosaic1"></script>
 <script>document.documentElement.classList.add("m-enter");</script>
+<script>document.documentElement.classList.add("mosaic-loading");</script>
+<link rel="stylesheet" href="css/loader.css?v=loader1">
+<script src="js/loader.js?v=loader1" defer></script>
 <script>document.documentElement.classList.add('mo-js');setTimeout(()=>document.documentElement.classList.add('mo-safe'),2500)</script>
 <link rel="modulepreload" href="assets/moments/moments.js"><link rel="modulepreload" href="assets/moments/lib.js"><link rel="modulepreload" href="assets/moments/word-highlight/moment.js">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23315b43' d='M4 4h11v11H4zm13 13h11v11H17z'/%3E%3Cpath fill='%23c22d63' d='M17 4h11v11H17z'/%3E%3C/svg%3E">
 <link rel="preload" as="font" href="assets/fonts/Milesdane%20Trial.otf" type="font/otf" crossorigin>
+<link rel="preload" as="font" href="assets/fonts/NeueMontreal-Regular.otf" type="font/otf" crossorigin>
 <link rel="stylesheet" href="assets/motion/motion.css?v=mosaic1">
-<link rel="stylesheet" href="css/tokens.css?v=mosaic1"><link rel="stylesheet" href="css/base.css?v=mosaic1"><link rel="stylesheet" href="css/layout.css?v=mosaic1"><link rel="stylesheet" href="css/components.css?v=mosaic1"><link rel="stylesheet" href="css/screens.css?v=mosaic1"><link rel="stylesheet" href="css/welcome.css?v=mosaic1"><link rel="stylesheet" href="css/studio.css?v=mosaic1">
+<link rel="stylesheet" href="css/tokens.css?v=mosaic1"><link rel="stylesheet" href="css/base.css?v=mosaic1"><link rel="stylesheet" href="css/layout.css?v=mosaic1"><link rel="stylesheet" href="css/components.css?v=mosaic1"><link rel="stylesheet" href="css/screens.css?v=mosaic1"><link rel="stylesheet" href="css/welcome.css?v=mosaic1"><link rel="stylesheet" href="css/studio.css?v=montreal1">
+<link rel="stylesheet" href="css/readability.css?v=readable1">
 </head>
 <body>
+<div class="mosaic-loader" id="mosaic-loader" aria-hidden="true" inert>
+  <div class="loader-composition">
+    <span class="loader-grid">
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+    </span>
+    <span class="loader-wordmark">Personal OS</span>
+  </div>
+</div>
 <!-- Client-directed botanical pixel identity. Milesdane Trial + DM Mono; original geometric artwork. -->
 <a class="skip-link" href="#welcome-main">Skip to content</a>
 <div class="welcome" id="welcome">

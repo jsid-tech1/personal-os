@@ -1,5 +1,15 @@
 # Personal OS — process and prompt log
 
+## Follow-up — mosaic entrance
+
+Inspected the requested sanvithi.com reference. Its public markup did not expose a standalone loading GIF. Built original 8×8 fragment artwork and finite opening/refresh motion instead of copying that site's assets or code. First-paint tiles live in HTML; script dismisses the entrance independently of Firebase and CSS also has a maximum-lifetime fallback. Actual route changes receive a short mosaic reveal; task updates do not. Both layers ignore pointer input and reduced-motion users skip them. Full suite: **42 passed**, one optional screenshot test skipped. After the final first-paint refinement, both loader-specific tests and the production build pass.
+
+## Follow-up — voice conversation and interface font
+
+Added an optional conversational project brief inside Add task, with typed or browser-dictated messages, contextual AI follow-ups, editable brief, explicit brief transfer and optional speech playback. Mic permission/unsupported/network errors retain text input; closing the planner aborts audio and requests. Conversation remains ephemeral and never bypasses plan approval. The same authenticated server endpoint handles bounded chat messages; no frontend secrets were introduced.
+
+At the user's next direction, replaced UI monospace with self-hosted Neue Montreal Regular/Medium/Bold/Italic from the supplied archive, keeping MilesDane headings. Aliased the legacy numeric/mono token so timers, labels and older components also use Neue Montreal. The demo archive contains no license document; publication rights still need confirmation. Latest verification: **39 passing tests**, no failures, one optional screenshot test skipped; build passes. Real voice accuracy and live paid AI are not claimed as automated test results.
+
 ## Latest rebuild — mosaic task planner
 
 The user supplied Milesdane Trial and two botanical/pixel references, then requested a responsive AI planning application. Inspected the font archive and retained its personal-use license; the source posters were not bundled. Built original geometric botanical artwork, a MilesDane/DM Mono system, responsive product landing, six-destination app navigation, an empty dashboard, authenticated server-only AI proposals with explicit editable approval, capacity-checked scheduling, weekly calendar and approved redistribution, task-earned weekly mosaics with history, focus presets and profile availability/logout.

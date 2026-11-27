@@ -740,3 +740,65 @@ test("voice permission failure and unavailable recognition keep typing usable", 
   await page.locator("#conversation-input").fill("I can still describe my project");
   assert.match(await page.locator("#conversation-voice-help").innerText(), /unavailable/);
 });
+
+test("readable typography is maintained across landing, tasks and conversation on desktop and phone", async t => {
+  const { page } = await open(t);
+  const size = selector => page.locator(selector).first().evaluate(el => parseFloat(getComputedStyle(el).fontSize));
+  assert.ok(await size("body") >= 16);
+  assert.ok(await size(".landing-description") >= 18);
+  assert.ok(await size(".welcome-account-help") >= 14);
+  await signIn(page);
+  await page.evaluate(() => { POS.store.actions.addTask({ title: "A clearly readable task" }); location.hash = "#/today"; });
+  await page.locator(".task-copy strong").waitFor();
+  for (const width of [1440, 768, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert.ok(await size(".task-copy strong") >= 16, `${width}px task title`);
+    assert.ok(await size(".task-copy p") >= 14, `${width}px task details`);
+    assert.ok(await size(".studio-page-head p") >= 14, `${width}px date label`);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${width}px dashboard fits`);
+  }
+  await page.locator("#capture-btn").click();
+  await page.locator("#project-conversation summary").click();
+  assert.ok(await size(".conversation-bubble") >= 16);
+  assert.ok(await size("#conversation-input") >= 16);
+  assert.ok(await size(".field-help") >= 14);
+  assert.equal(await page.locator(".plan-overlay").evaluate(el => el.scrollWidth > el.clientWidth), false);
+  await page.screenshot({ path: "test-results/readable-conversation-320.png" });
+});
+
+test("mosaic reveals expire, never intercept controls and do not replay on task updates", async t => {
+  const { page } = await open(t, { reducedMotion: "no-preference" });
+  await page.waitForFunction(() => !document.getElementById("mosaic-loader"));
+  assert.equal(await page.locator("html").evaluate(el => el.classList.contains("mosaic-loading")), false);
+  await signIn(page);
+  await page.evaluate(() => { POS.store.actions.addTask({ title: "Click through the mosaic" }); location.hash = "#/today"; });
+  await page.locator(".task-copy strong").waitFor();
+  const reveal = await page.evaluate(() => {
+    const main = document.getElementById("main");
+    POS.loader.reveal(main);
+    const button = main.querySelector("[data-plan]"), rect = button.getBoundingClientRect();
+    return { tiles: main.querySelectorAll(".route-mosaic .loader-grid i").length, pointer: getComputedStyle(main.querySelector(".route-mosaic")).pointerEvents, receivesClick: button.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)) };
+  });
+  assert.equal(reveal.tiles, 64);
+  assert.equal(reveal.pointer, "none");
+  assert.equal(reveal.receivesClick, true);
+  await page.waitForFunction(() => !document.querySelector(".route-mosaic"));
+  await page.getByRole("checkbox", { name: "Complete Click through the mosaic", exact: true }).click();
+  assert.equal(await page.locator(".route-mosaic").count(), 0);
+  await page.reload();
+  await page.waitForFunction(() => !document.getElementById("mosaic-loader"));
+  assert.equal(await page.locator(".studio-dashboard-grid").isVisible(), true);
+});
+
+test("reduced motion skips mosaic screen reveals and missing loader code cannot trap the page", async t => {
+  const { page, context } = await open(t);
+  await signIn(page);
+  await page.evaluate(() => POS.loader.reveal(document.getElementById("main")));
+  assert.equal(await page.locator(".route-mosaic").count(), 0);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await context.route("**/js/loader.js?*", route => route.abort());
+  await page.reload();
+  await page.waitForFunction(() => getComputedStyle(document.getElementById("mosaic-loader")).visibility === "hidden");
+  assert.equal(await page.locator("#mosaic-loader").isVisible(), false);
+  assert.equal(await page.locator("#app").isVisible(), true);
+});

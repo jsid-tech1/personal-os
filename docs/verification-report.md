@@ -1,5 +1,23 @@
 # Verification report
 
+## Follow-up — mosaic opening and screen reveals
+
+Verification: **42 passing tests**, no failures, one optional screenshot test skipped; build passes. The two loader-specific tests also passed after the final first-paint HTML/failure-fallback refinement. The fallback test disables the loader script with normal motion enabled and verifies the CSS layer hides itself.
+
+Added original mosaic loader artwork and finite CSS animation, using sanvithi.com as a motion reference rather than copying its proprietary asset or effect code. The public HTML exposed no standalone GIF. Opening/refresh assembly dismisses shortly after DOM readiness, with a CSS safety dismissal after about 1.2 seconds from first styling. Route changes use a 260ms paint-only mosaic reveal. Neither blocks input or waits on Firebase, and state updates do not replay the transition. Reduced-motion users skip both. Tests cover expiry, pointer hit-testing, task-update behaviour, refresh, reduced motion and a missing loader script.
+
+## Follow-up — readable body and interface text
+
+Added a final shared type layer in `css/readability.css`: 16px body/conversation, 18px landing descriptions, 17px task titles, 14px secondary information/labels, and 15–16px actions. Increased secondary-text contrast in both themes; phone layouts wrap and stack rather than reducing body text. Restored multiline textarea sizing and kept the planner close button alongside its title. Date-range labels use Neue Montreal rather than trial-restricted numeral glyphs.
+
+Final suite: **40 passed, 0 failed, 1 optional screenshot test skipped**. Includes computed-font-size regressions across 1440/768/390/320px plus landing responsiveness, mobile settings and AI review. Build passes. Reviewed refreshed landing, calendar, review and conversation screenshots. Prior marketing-layout/performance findings below remain recorded, not claimed as cleared.
+
+## Follow-up — project conversation and Neue Montreal
+
+Latest suite: **39 passed, 0 failed, 1 optional screenshot test skipped**; production build passes. Added a contextual, authenticated project conversation with browser dictation, editable transcript-before-send, optional spoken replies, running editable brief, and explicit transfer into the existing approval flow. Tests simulate speech results, denied permissions, unsupported recognition, conversation context and brief transfer without saving tasks. Actual microphone accuracy and paid AI conversation require device/browser testing and the existing server credentials.
+
+Neue Montreal now replaces monospace throughout UI/body/forms/navigation/dates/timers, while MilesDane remains for headings. Regular/Medium/Bold/Italic are self-hosted from the user-supplied archive, with cache-versioned stylesheet and a preload for Regular. Inspected the refreshed 320px plan-review screenshot; the full suite again verifies responsive fit. No license document was included in the Neue Montreal demo archive; confirm publication rights. Layout/performance measurements below belong to the preceding MilesDane/DM Mono iteration and were not remeasured for this font-only update. The seven existing strict layout findings remain open.
+
 **GATE: OPEN 7 (rounds used up).** Functional tests and the production build pass. Seven strict marketing-layout findings remain open; performance checks also flag initial parsed JavaScript weight. This is not a claim of a clean design gate or a deployed production service.
 
 ## Current results — 27 November 2026
